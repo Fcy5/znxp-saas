@@ -62,6 +62,7 @@ export interface ProductDetail extends ProductCard {
   sentiment_summary?: string
   pain_points?: string[]
   source_url?: string
+  is_saved?: boolean
 }
 
 export interface PageInfo {
