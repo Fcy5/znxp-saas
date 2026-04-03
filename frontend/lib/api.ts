@@ -387,10 +387,7 @@ export const AVAILABLE_MODELS = [
 ]
 
 export const IMAGE_MODELS = [
-  { value: "openai/gpt-image-1.5",                 label: "GPT-Image 1.5" },
-  { value: "google/gemini-3.1-flash-image-preview", label: "Gemini 3.1 Flash Image" },
-  { value: "google/gemini-3-pro-image-preview",     label: "Gemini 3 Pro Image" },
-  { value: "volcengine/doubao-seedream-5.0-lite",   label: "Doubao Seedream 5.0" },
+  { value: "openai/gpt-image-1.5", label: "GPT-Image 1.5" },
 ]
 
 export const IMAGE_PROMPTS = [
