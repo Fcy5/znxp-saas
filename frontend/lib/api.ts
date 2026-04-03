@@ -1,6 +1,10 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
+const API_BASE = typeof window !== "undefined"
+  ? `${window.location.origin}/api/v1`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1")
 // 静态资源 base（去掉 /api/v1 路径）
-export const STATIC_BASE = API_BASE.replace(/\/api\/v1$/, "")
+export const STATIC_BASE = typeof window !== "undefined"
+  ? window.location.origin
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1$/, "")
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null
