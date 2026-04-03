@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
-import { productApi, shopApi, publishApi, uploadApi, agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_PROMPTS, type ProductDetail, type Shop, type SizeVariant } from "@/lib/api"
+import { productApi, shopApi, publishApi, uploadApi, agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_PROMPTS, STATIC_BASE, type ProductDetail, type Shop, type SizeVariant } from "@/lib/api"
 import { AgentWorkflow } from "@/components/agent/agent-workflow"
 
 const APPAREL_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"]
@@ -734,7 +734,7 @@ export default function ProductDetailPage() {
                     {generatedImgs.map((url, i) => (
                       <div key={i} className="relative group/gen aspect-square rounded-xl overflow-hidden border border-border bg-secondary">
                         <img
-                          src={`http://localhost:8000${url}`}
+                          src={url.startsWith('/') ? `${STATIC_BASE}${url}` : url}
                           alt={`generated-${i}`}
                           className="w-full h-full object-cover"
                         />
