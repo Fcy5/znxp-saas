@@ -206,7 +206,8 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
         filename = f"{uuid.uuid4().hex}.png"
         filepath = os.path.join(upload_dir, filename)
 
-        if body.reference_image_url:
+        is_openai_model = body.model.startswith("openai/") or body.model.startswith("gpt-image")
+        if body.reference_image_url and is_openai_model:
             img_url = body.reference_image_url
             if img_url.startswith("/static"):
                 img_url = f"http://localhost:8000{img_url}"
