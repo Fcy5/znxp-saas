@@ -206,28 +206,12 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
         filename = f"{uuid.uuid4().hex}.png"
         filepath = os.path.join(upload_dir, filename)
 
-        is_openai_model = body.model.startswith("openai/") or body.model.startswith("gpt-image")
-        if body.reference_image_url and is_openai_model and body.reference_image_url.startswith("http"):
-            img_url = body.reference_image_url
-            async with httpx.AsyncClient(timeout=30) as hc:
-                r = await hc.get(img_url)
-                r.raise_for_status()
-                img_bytes = r.content
-
-            resp = client.images.edit(
-                model=body.model,
-                image=("product.png", io.BytesIO(img_bytes), "image/png"),
-                prompt=body.prompt,
-                n=1,
-                size=body.size,
-            )
-        else:
-            resp = client.images.generate(
-                model=body.model,
-                prompt=body.prompt,
-                n=1,
-                size=body.size,
-            )
+        resp = client.images.generate(
+            model=body.model,
+            prompt=body.prompt,
+            n=1,
+            size=body.size,
+        )
 
         img_data = resp.data[0]
         if img_data.b64_json:
