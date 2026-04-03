@@ -387,7 +387,9 @@ export const AVAILABLE_MODELS = [
 ]
 
 export const IMAGE_MODELS = [
-  { value: "openai/gpt-image-1.5", label: "GPT-Image 1.5" },
+  { value: "openai/gpt-image-1.5",                  label: "GPT-Image 1.5" },
+  { value: "google/gemini-3.1-flash-image-preview",  label: "Gemini 3.1 Flash Image" },
+  { value: "google/gemini-2.5-flash-image",          label: "Gemini 2.5 Flash Image" },
 ]
 
 export const IMAGE_PROMPTS = [
