@@ -209,35 +209,16 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
         ref_url = body.reference_image_url if (body.reference_image_url and body.reference_image_url.startswith("http")) else None
 
         if ref_url:
-            # 图生图：走 chat completions 多模态（Gemini 支持）
-            chat_resp = client.chat.completions.create(
-                model=body.model,
-                messages=[{"role": "user", "content": [
-                    {"type": "image_url", "image_url": {"url": ref_url}},
-                    {"type": "text", "text": body.prompt},
-                ]}],
+            # 图生图：下载参考图 → /v1/images/variations
+            async with httpx.AsyncClient(timeout=30) as hc:
+                r = await hc.get(ref_url)
+                r.raise_for_status()
+                img_bytes = r.content
+            resp = client.images.create_variation(
+                image=("reference.png", io.BytesIO(img_bytes), "image/png"),
+                n=1,
+                size=body.size,
             )
-            content = chat_resp.choices[0].message.content
-            # 尝试从 content 里提取 base64 图片
-            saved = False
-            if isinstance(content, list):
-                for part in content:
-                    if isinstance(part, dict) and part.get("type") == "image_url":
-                        img_url_str = part["image_url"]["url"]
-                        if img_url_str.startswith("data:image"):
-                            b64 = img_url_str.split(",", 1)[1]
-                            with open(filepath, "wb") as f:
-                                f.write(base64.b64decode(b64))
-                            saved = True
-                        else:
-                            async with httpx.AsyncClient(timeout=60) as hc:
-                                r = await hc.get(img_url_str)
-                                with open(filepath, "wb") as f:
-                                    f.write(r.content)
-                            saved = True
-                        break
-            if not saved:
-                raise Exception("模型未返回图片，请尝试纯文字生图")
         else:
             # 文生图
             resp = client.images.generate(
@@ -246,17 +227,18 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
                 n=1,
                 size=body.size,
             )
-            img_data = resp.data[0]
-            if img_data.b64_json:
+
+        img_data = resp.data[0]
+        if img_data.b64_json:
+            with open(filepath, "wb") as f:
+                f.write(base64.b64decode(img_data.b64_json))
+        elif img_data.url:
+            async with httpx.AsyncClient(timeout=60) as hc:
+                r = await hc.get(img_data.url)
                 with open(filepath, "wb") as f:
-                    f.write(base64.b64decode(img_data.b64_json))
-            elif img_data.url:
-                async with httpx.AsyncClient(timeout=60) as hc:
-                    r = await hc.get(img_data.url)
-                    with open(filepath, "wb") as f:
-                        f.write(r.content)
-            else:
-                raise Exception("模型未返回图片数据")
+                    f.write(r.content)
+        else:
+            raise Exception("模型未返回图片数据")
 
         url = f"/static/uploads/ai_images/{filename}"
     except Exception as e:
