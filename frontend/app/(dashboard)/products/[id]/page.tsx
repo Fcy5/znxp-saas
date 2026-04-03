@@ -70,7 +70,11 @@ export default function ProductDetailPage() {
     setGeneratingImg(true)
     setImgError("")
     try {
-      const res = await agentApi.generateImage(imgPrompt, imgModel)
+      const productContext = product
+        ? `Product: ${product.title}${product.category ? `, Category: ${product.category}` : ""}. `
+        : ""
+      const finalPrompt = `${productContext}${imgPrompt}`
+      const res = await agentApi.generateImage(finalPrompt, imgModel)
       if (res.data?.url) {
         setGeneratedImgs(prev => [res.data!.url, ...prev])
       }
