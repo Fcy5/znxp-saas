@@ -155,7 +155,7 @@ export default function SettingsPage() {
                     className="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-offset-1 ring-offset-background"
                     style={{
                       backgroundColor: t.color,
-                      ringColor: theme === t.id ? t.color : "transparent",
+                      outlineColor: theme === t.id ? t.color : "transparent",
                     }}
                   />
                   {t.label}
