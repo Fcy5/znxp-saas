@@ -209,24 +209,25 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
         ref_url = body.reference_image_url if (body.reference_image_url and body.reference_image_url.startswith("http")) else None
 
         if ref_url:
-            # 图生图：下载参考图 → /v1/images/variations
-            async with httpx.AsyncClient(timeout=30) as hc:
-                r = await hc.get(ref_url)
-                r.raise_for_status()
-                img_bytes = r.content
-            resp = client.images.create_variation(
-                image=("reference.png", io.BytesIO(img_bytes), "image/png"),
-                n=1,
-                size=body.size,
+            # 图生图：先让视觉模型描述参考图，再用描述+prompt 文生图
+            vision_resp = client.chat.completions.create(
+                model="google/gemini-2.5-flash",
+                messages=[{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": ref_url}},
+                    {"type": "text", "text": "Describe this product image in detail for use as an image generation prompt. Include: product type, colors, style, materials, background, lighting, mood. Return only the description, no extra text."},
+                ]}],
             )
+            img_description = vision_resp.choices[0].message.content.strip()
+            final_prompt = f"{img_description}. Style requirement: {body.prompt}"
         else:
-            # 文生图
-            resp = client.images.generate(
-                model=body.model,
-                prompt=body.prompt,
-                n=1,
-                size=body.size,
-            )
+            final_prompt = body.prompt
+
+        resp = client.images.generate(
+            model=body.model,
+            prompt=final_prompt[:4000],
+            n=1,
+            size=body.size,
+        )
 
         img_data = resp.data[0]
         if img_data.b64_json:
