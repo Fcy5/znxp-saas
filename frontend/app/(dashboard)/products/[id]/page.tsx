@@ -674,19 +674,6 @@ export default function ProductDetailPage() {
               </button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* 模型选择 */}
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">图片模型</label>
-                <select
-                  value={imgModel}
-                  onChange={e => setImgModel(e.target.value)}
-                  className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {IMAGE_MODELS.map(m => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-              </div>
 
               {/* 快捷提示词 */}
               <div className="space-y-1.5">
