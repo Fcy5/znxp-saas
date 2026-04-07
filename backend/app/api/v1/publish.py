@@ -167,8 +167,8 @@ async def unpublish_product(
                     json={"product": {"id": record.shopify_product_id, "status": "archived"}},
                     headers=_headers(shop.access_token),
                 )
-        except Exception:
-            pass  # best-effort
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Shopify 下架失败: {e}")
 
     record.status = "archived"
     record.is_deleted = True
