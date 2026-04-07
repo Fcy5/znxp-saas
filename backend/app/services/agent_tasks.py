@@ -109,7 +109,7 @@ Return ONLY valid JSON, no markdown, no explanation."""
         client = _ai_client()
         _update_task(task_id, progress=50)
         resp = client.chat.completions.create(
-            model="google/gemini-2.5-flash",
+            model="google/gemini-2.5-pro",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
         )
