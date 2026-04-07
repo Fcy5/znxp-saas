@@ -42,64 +42,54 @@ def _ai_client():
 # ── store_profile ─────────────────────────────────────────────────────────────
 
 async def run_store_profile(task_id: int, shop_id: int, user_id: int):
-    """爬取店铺首页内容，用 AI 生成店铺画像，写回 shops 表"""
+    """直接让 Gemini 通过店铺 URL 分析生成店铺画像，写回 shops 表（全程 raw SQL）"""
+    from sqlalchemy import text
     await _update_task(task_id, status="running", progress=10)
     try:
-        # 1. 取店铺信息
+        # 1. 取店铺信息（raw SQL，避免 ORM greenlet 问题）
         async with AsyncSessionLocal() as db:
-            shop = await db.get(Shop, shop_id)
-            if not shop or shop.user_id != user_id:
-                await _update_task(task_id, status="failed", error_message="店铺不存在")
-                return
-            domain = shop.domain
-            shop_name = shop.name
+            r = await db.execute(
+                text("SELECT domain, name FROM shops WHERE id=:id AND user_id=:uid AND is_deleted=0"),
+                {"id": shop_id, "uid": user_id}
+            )
+            row = r.fetchone()
+        if not row:
+            await _update_task(task_id, status="failed", error_message="店铺不存在")
+            return
+        domain, shop_name = row
+        shop_url = f"https://{domain}" if not domain.startswith("http") else domain
 
-        await _update_task(task_id, progress=20)
+        await _update_task(task_id, progress=30)
 
-        # 2. 爬取店铺首页
-        import httpx
-        shop_url = domain if domain.startswith("http") else f"https://{domain}"
-        page_text = ""
-        try:
-            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as hc:
-                r = await hc.get(shop_url, headers={"User-Agent": "Mozilla/5.0"})
-                # 取前 8000 字符，去掉 HTML 标签
-                import re
-                raw = r.text[:12000]
-                page_text = re.sub(r"<[^>]+>", " ", raw)
-                page_text = re.sub(r"\s+", " ", page_text).strip()[:6000]
-        except Exception as e:
-            page_text = f"(无法获取页面: {e})"
-
-        await _update_task(task_id, progress=50)
-
-        # 3. AI 分析
+        # 2. AI 直接分析店铺 URL
         if not settings.ai_api_key:
             await _update_task(task_id, status="failed", error_message="AI API Key 未配置")
             return
 
-        prompt = f"""You are an e-commerce analyst. Analyze this Shopify store and generate a store profile.
+        prompt = f"""You are a professional e-commerce analyst specializing in Shopify stores.
+Analyze the following Shopify store and generate a detailed store profile.
 
 Store name: {shop_name}
 Store URL: {shop_url}
-Page content (excerpt):
-{page_text}
+
+Based on the store name, URL domain, and your knowledge of this brand/niche, generate a comprehensive profile.
 
 Return a JSON object with exactly these keys:
 {{
   "niche": "1-3 word product niche (e.g. 'custom embroidery', 'pet portraits', 'wedding gifts')",
   "target_audience": "2-3 sentences describing target customers (age, interests, occasions)",
-  "price_range_min": <number, typical lowest price in USD>,
-  "price_range_max": <number, typical highest price in USD>,
+  "price_range_min": <number, estimated lowest price in USD>,
+  "price_range_max": <number, estimated highest price in USD>,
   "visual_style": "1-3 words describing visual style (e.g. 'rustic warm', 'minimalist modern', 'colorful playful')",
-  "profile_summary": "3-4 sentences summarizing the store's positioning, best-selling products, and target market"
+  "profile_summary": "3-4 sentences summarizing the store positioning, best-selling product types, and target market"
 }}
 
-Return ONLY valid JSON, no markdown."""
+Return ONLY valid JSON, no markdown, no explanation."""
 
         client = _ai_client()
+        await _update_task(task_id, progress=50)
         resp = await client.chat.completions.create(
-            model=settings.ai_model,
+            model="google/gemini-2.5-flash",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
         )
@@ -112,18 +102,26 @@ Return ONLY valid JSON, no markdown."""
 
         await _update_task(task_id, progress=80)
 
-        # 4. 写回 shop 表
+        # 3. 写回 shop 表（raw SQL）
         async with AsyncSessionLocal() as db:
-            shop = await db.get(Shop, shop_id)
-            if shop:
-                shop.niche = data.get("niche", "")[:255]
-                shop.target_audience = data.get("target_audience", "")
-                shop.price_range_min = data.get("price_range_min")
-                shop.price_range_max = data.get("price_range_max")
-                shop.visual_style = data.get("visual_style", "")[:255]
-                shop.profile_summary = data.get("profile_summary", "")
-                shop.profile_generated_at = datetime.utcnow().isoformat()
-                await db.commit()
+            await db.execute(text("""
+                UPDATE shops SET
+                    niche=:niche, target_audience=:ta,
+                    price_range_min=:pmin, price_range_max=:pmax,
+                    visual_style=:vs, profile_summary=:ps,
+                    profile_generated_at=:pga, updated_at=NOW()
+                WHERE id=:id
+            """), {
+                "niche": (data.get("niche") or "")[:255],
+                "ta": data.get("target_audience") or "",
+                "pmin": data.get("price_range_min"),
+                "pmax": data.get("price_range_max"),
+                "vs": (data.get("visual_style") or "")[:255],
+                "ps": data.get("profile_summary") or "",
+                "pga": datetime.utcnow().isoformat(),
+                "id": shop_id,
+            })
+            await db.commit()
 
         await _update_task(task_id, status="success", progress=100,
                            output_data=data)
