@@ -86,25 +86,30 @@ def run_store_profile(task_id: int, shop_id: int, user_id: int):
             _update_task(task_id, status="failed", error_message="AI API Key 未配置")
             return
 
-        prompt = f"""You are a professional e-commerce analyst specializing in Shopify stores.
-Analyze the following Shopify store and generate a detailed store profile.
+        prompt = f"""You are a senior e-commerce consultant specializing in Shopify stores and cross-border e-commerce.
+
+Analyze this Shopify store and provide a professional diagnosis:
 
 Store name: {shop_name}
 Store URL: {shop_url}
 
-Based on the store name, URL domain, and your knowledge of this brand/niche, generate a comprehensive profile.
+Based on your knowledge of this store, its niche, competitors, and e-commerce best practices, provide:
+1. What niche/market this store is in
+2. Who the target customers are
+3. What problems or weaknesses this store likely has (product selection, pricing, branding, marketing, etc.)
+4. Key opportunities for improvement
 
 Return a JSON object with exactly these keys:
 {{
   "niche": "1-3 word product niche (e.g. 'custom embroidery', 'pet portraits', 'wedding gifts')",
-  "target_audience": "2-3 sentences describing target customers (age, interests, occasions)",
-  "price_range_min": <number, estimated lowest price in USD>,
-  "price_range_max": <number, estimated highest price in USD>,
-  "visual_style": "1-3 words describing visual style (e.g. 'rustic warm', 'minimalist modern', 'colorful playful')",
-  "profile_summary": "3-4 sentences summarizing the store positioning, best-selling product types, and target market"
+  "target_audience": "2-3 sentences describing target customers",
+  "price_range_min": <estimated lowest price in USD as number>,
+  "price_range_max": <estimated highest price in USD as number>,
+  "visual_style": "1-3 words describing the store visual style",
+  "profile_summary": "3-4 sentences diagnosing the store: current positioning, main problems, and top opportunities to improve sales"
 }}
 
-Return ONLY valid JSON, no markdown, no explanation."""
+Return ONLY valid JSON, no markdown, no extra text."""
 
         client = _ai_client()
         _update_task(task_id, progress=50)
