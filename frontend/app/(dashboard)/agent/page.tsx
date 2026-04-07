@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { AgentTaskCard } from "@/components/agent/agent-task-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,7 +67,18 @@ const agentCapabilities = [
   },
 ]
 
+// 每个能力对应的跳转路由
+const capabilityRoute: Record<string, string> = {
+  store_profile:   "/shops",
+  auto_discovery:  "/shops",
+  copywriting:     "/products",
+  image_processing:"/products",
+  publish:         "/library",
+  video_generation:"",  // Phase 3 未实现
+}
+
 export default function AgentPage() {
+  const router = useRouter()
   const [tasks, setTasks] = useState<AgentTask[]>([])
   const [loadingTasks, setLoadingTasks] = useState(true)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -113,7 +125,7 @@ export default function AgentPage() {
                 从"懂你的店" → "跨平台筛选高溢价品" → "图文重构" → "视频二创" → "API 无缝直传上架"，全程 Agent 托管，零人工干预。
               </p>
             </div>
-            <Button className="gap-2 shrink-0">
+            <Button className="gap-2 shrink-0" onClick={() => router.push("/shops")}>
               <Sparkles className="w-4 h-4" />
               一键启动全流程
             </Button>
@@ -160,8 +172,13 @@ export default function AgentPage() {
                         </div>
                       ))}
                     </div>
-                    <Button size="sm" variant="outline" className="w-full text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                      启动此 Agent
+                    <Button
+                      size="sm" variant="outline"
+                      className="w-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      disabled={!capabilityRoute[cap.type]}
+                      onClick={() => capabilityRoute[cap.type] && router.push(capabilityRoute[cap.type])}
+                    >
+                      {cap.type === "video_generation" ? "即将上线" : "启动此 Agent"}
                     </Button>
                   </CardContent>
                 </Card>
