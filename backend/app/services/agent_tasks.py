@@ -1,69 +1,89 @@
 """
-Agent 后台任务执行器
-- run_store_profile: 爬取店铺首页 → AI 分析 → 更新 shop profile
-- run_auto_discovery: 根据店铺 niche 从商品库推荐匹配商品
-每个任务更新 AgentTask.status / progress / output_data / error_message
+Agent 后台任务执行器（同步版本，使用 pymysql 直连，避免 SQLAlchemy async greenlet 问题）
+FastAPI BackgroundTasks 会把同步函数丢进线程池执行。
 """
 import json
-import asyncio
+import pymysql
+import pymysql.cursors
 from datetime import datetime
-from sqlalchemy import select, or_
-from app.core.database import AsyncSessionLocal
-from app.models.agent_task import AgentTask
-from app.models.shop import Shop
-from app.models.product import Product
+from openai import OpenAI
 from app.core.config import settings
 
 
-# ── 工具函数 ───────────────────────────────────────────────────────────────────
+# ── DB 直连 ────────────────────────────────────────────────────────────────────
 
-async def _update_task(task_id: int, **kwargs):
-    from sqlalchemy import text
-    set_parts = []
-    values: dict = {"task_id": task_id}
-    for k, v in kwargs.items():
-        if isinstance(v, dict) or isinstance(v, list):
-            v = json.dumps(v, ensure_ascii=False)
-        set_parts.append(f"`{k}` = :{k}")
-        values[k] = v
-    if not set_parts:
+def _db():
+    import re
+    url = settings.database_url
+    # 解析 mysql+asyncmy://user:pass@host:port/db
+    m = re.match(r"mysql\+\w+://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(\w+)", url)
+    if not m:
+        raise ValueError(f"无法解析 DATABASE_URL: {url}")
+    user, password, host, port, db = m.groups()
+    return pymysql.connect(
+        host=host, port=int(port or 3306),
+        user=user, password=password, db=db,
+        charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False,
+    )
+
+
+def _update_task(task_id: int, **kwargs):
+    if not kwargs:
         return
-    sql = f"UPDATE agent_tasks SET {', '.join(set_parts)} WHERE id = :task_id"
-    async with AsyncSessionLocal() as db:
-        await db.execute(text(sql), values)
-        await db.commit()
+    conn = _db()
+    try:
+        parts = []
+        vals = []
+        for k, v in kwargs.items():
+            if isinstance(v, (dict, list)):
+                v = json.dumps(v, ensure_ascii=False)
+            parts.append(f"`{k}` = %s")
+            vals.append(v)
+        vals.append(task_id)
+        sql = f"UPDATE agent_tasks SET {', '.join(parts)} WHERE id = %s"
+        with conn.cursor() as cur:
+            cur.execute(sql, vals)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _ai_client():
-    from openai import AsyncOpenAI
-    return AsyncOpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
+    return OpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
 
 
 # ── store_profile ─────────────────────────────────────────────────────────────
 
-async def run_store_profile(task_id: int, shop_id: int, user_id: int):
-    """直接让 Gemini 通过店铺 URL 分析生成店铺画像，写回 shops 表（全程 raw SQL）"""
-    from sqlalchemy import text
-    await _update_task(task_id, status="running", progress=10)
+def run_store_profile(task_id: int, shop_id: int, user_id: int):
+    """Gemini 通过店铺 URL 直接生成店铺画像（同步，pymysql）"""
+    _update_task(task_id, status="running", progress=10)
     try:
-        # 1. 取店铺信息（raw SQL，避免 ORM greenlet 问题）
-        async with AsyncSessionLocal() as db:
-            r = await db.execute(
-                text("SELECT domain, name FROM shops WHERE id=:id AND user_id=:uid AND is_deleted=0"),
-                {"id": shop_id, "uid": user_id}
-            )
-            row = r.fetchone()
+        # 1. 取店铺信息
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT domain, name FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                    (shop_id, user_id)
+                )
+                row = cur.fetchone()
+        finally:
+            conn.close()
+
         if not row:
-            await _update_task(task_id, status="failed", error_message="店铺不存在")
+            _update_task(task_id, status="failed", error_message="店铺不存在")
             return
-        domain, shop_name = row
+
+        domain = row["domain"]
+        shop_name = row["name"]
         shop_url = f"https://{domain}" if not domain.startswith("http") else domain
 
-        await _update_task(task_id, progress=30)
+        _update_task(task_id, progress=30)
 
         # 2. AI 直接分析店铺 URL
         if not settings.ai_api_key:
-            await _update_task(task_id, status="failed", error_message="AI API Key 未配置")
+            _update_task(task_id, status="failed", error_message="AI API Key 未配置")
             return
 
         prompt = f"""You are a professional e-commerce analyst specializing in Shopify stores.
@@ -87,8 +107,8 @@ Return a JSON object with exactly these keys:
 Return ONLY valid JSON, no markdown, no explanation."""
 
         client = _ai_client()
-        await _update_task(task_id, progress=50)
-        resp = await client.chat.completions.create(
+        _update_task(task_id, progress=50)
+        resp = client.chat.completions.create(
             model="google/gemini-2.5-flash",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
@@ -100,107 +120,119 @@ Return ONLY valid JSON, no markdown, no explanation."""
                 raw = raw[4:]
         data = json.loads(raw.strip())
 
-        await _update_task(task_id, progress=80)
+        _update_task(task_id, progress=80)
 
-        # 3. 写回 shop 表（raw SQL）
-        async with AsyncSessionLocal() as db:
-            await db.execute(text("""
-                UPDATE shops SET
-                    niche=:niche, target_audience=:ta,
-                    price_range_min=:pmin, price_range_max=:pmax,
-                    visual_style=:vs, profile_summary=:ps,
-                    profile_generated_at=:pga, updated_at=NOW()
-                WHERE id=:id
-            """), {
-                "niche": (data.get("niche") or "")[:255],
-                "ta": data.get("target_audience") or "",
-                "pmin": data.get("price_range_min"),
-                "pmax": data.get("price_range_max"),
-                "vs": (data.get("visual_style") or "")[:255],
-                "ps": data.get("profile_summary") or "",
-                "pga": datetime.utcnow().isoformat(),
-                "id": shop_id,
-            })
-            await db.commit()
+        # 3. 写回 shop 表
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE shops SET
+                        niche=%s, target_audience=%s,
+                        price_range_min=%s, price_range_max=%s,
+                        visual_style=%s, profile_summary=%s,
+                        profile_generated_at=%s, updated_at=NOW()
+                    WHERE id=%s
+                """, (
+                    (data.get("niche") or "")[:255],
+                    data.get("target_audience") or "",
+                    data.get("price_range_min"),
+                    data.get("price_range_max"),
+                    (data.get("visual_style") or "")[:255],
+                    data.get("profile_summary") or "",
+                    datetime.utcnow().isoformat(),
+                    shop_id,
+                ))
+            conn.commit()
+        finally:
+            conn.close()
 
-        await _update_task(task_id, status="success", progress=100,
-                           output_data=data)
+        _update_task(task_id, status="success", progress=100, output_data=data)
 
     except json.JSONDecodeError as e:
-        await _update_task(task_id, status="failed", error_message=f"AI 返回格式异常: {e}")
+        _update_task(task_id, status="failed", error_message=f"AI 返回格式异常: {e}")
     except Exception as e:
-        await _update_task(task_id, status="failed", error_message=str(e))
+        _update_task(task_id, status="failed", error_message=str(e))
 
 
 # ── auto_discovery ────────────────────────────────────────────────────────────
 
-async def run_auto_discovery(task_id: int, shop_id: int, user_id: int, count: int = 10):
-    """根据店铺 niche 从商品库检索最匹配的商品"""
-    await _update_task(task_id, status="running", progress=10)
+def run_auto_discovery(task_id: int, shop_id: int, user_id: int, count: int = 10):
+    """根据店铺 niche 从商品库检索最匹配的商品（同步，pymysql）"""
+    _update_task(task_id, status="running", progress=10)
     try:
         # 1. 获取店铺 niche
-        async with AsyncSessionLocal() as db:
-            shop = await db.get(Shop, shop_id)
-            if not shop or shop.user_id != user_id:
-                await _update_task(task_id, status="failed", error_message="店铺不存在")
-                return
-            niche = shop.niche or ""
-            profile = shop.profile_summary or ""
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT niche, profile_summary, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                    (shop_id, user_id)
+                )
+                shop = cur.fetchone()
+        finally:
+            conn.close()
 
-        await _update_task(task_id, progress=20)
-
-        if not niche and not profile:
-            await _update_task(task_id, status="failed",
-                               error_message="尚未生成店铺画像，请先运行「店铺诊脉」")
+        if not shop:
+            _update_task(task_id, status="failed", error_message="店铺不存在")
             return
 
-        # 2. 从商品库关键词检索（分词匹配）
+        niche = shop.get("niche") or ""
+        profile = shop.get("profile_summary") or ""
+
+        _update_task(task_id, progress=20)
+
+        if not niche and not profile:
+            _update_task(task_id, status="failed", error_message="尚未生成店铺画像，请先运行「店铺诊脉」")
+            return
+
+        # 2. 关键词检索商品
         keywords = [w.strip() for w in niche.replace(",", " ").split() if len(w.strip()) > 2]
         if not keywords:
             keywords = ["embroidery", "custom", "personalized"]
 
-        async with AsyncSessionLocal() as db:
-            conditions = [
-                or_(*[Product.title.ilike(f"%{kw}%") for kw in keywords[:5]]),
-            ]
-            if shop.target_audience:
-                # 用 category 辅助筛选
-                pass
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                placeholders = " OR ".join([f"title LIKE %s" for _ in keywords[:5]])
+                like_vals = [f"%{kw}%" for kw in keywords[:5]]
+                cur.execute(f"""
+                    SELECT id, title, category, price, ai_score, source_platform
+                    FROM products
+                    WHERE is_deleted=0 AND main_image IS NOT NULL AND main_image != ''
+                    AND ({placeholders})
+                    ORDER BY ai_score DESC
+                    LIMIT %s
+                """, like_vals + [count * 3])
+                rows = cur.fetchall()
 
-            q = (select(Product)
-                 .where(Product.is_deleted == False)
-                 .where(Product.main_image.isnot(None))
-                 .where(Product.main_image != "")
-                 .where(or_(*conditions))
-                 .order_by(Product.ai_score.desc().nullslast())
-                 .limit(count * 3))
-            rows = (await db.execute(q)).scalars().all()
+                if not rows:
+                    cur.execute("""
+                        SELECT id, title, category, price, ai_score, source_platform
+                        FROM products
+                        WHERE is_deleted=0 AND main_image IS NOT NULL
+                        ORDER BY ai_score DESC
+                        LIMIT %s
+                    """, (count,))
+                    rows = cur.fetchall()
+        finally:
+            conn.close()
 
-        await _update_task(task_id, progress=50)
+        _update_task(task_id, progress=50)
 
-        if not rows:
-            # 无关键词匹配，退回到 ai_score 最高的商品
-            async with AsyncSessionLocal() as db:
-                q = (select(Product)
-                     .where(Product.is_deleted == False)
-                     .where(Product.main_image.isnot(None))
-                     .order_by(Product.ai_score.desc().nullslast())
-                     .limit(count))
-                rows = (await db.execute(q)).scalars().all()
-
-        # 3. 用 AI 二次排序（如果有 ai_api_key）
         candidates = [
-            {"id": p.id, "title": p.title, "category": p.category or "",
-             "price": p.price, "ai_score": p.ai_score or 0,
-             "platform": p.source_platform}
-            for p in rows
+            {"id": r["id"], "title": r["title"], "category": r["category"] or "",
+             "price": r["price"], "ai_score": r["ai_score"] or 0,
+             "platform": r["source_platform"]}
+            for r in rows
         ]
 
-        recommended = candidates[:count]  # 默认取前 N
-        reasons: dict[int, str] = {}
+        recommended = candidates[:count]
+        reasons: dict = {}
 
+        # 3. AI 二次排序
         if settings.ai_api_key and len(candidates) > count:
-            await _update_task(task_id, progress=70)
+            _update_task(task_id, progress=70)
             try:
                 prompt = f"""You are a product selection expert for a Shopify dropshipping store.
 
@@ -214,15 +246,12 @@ Candidates:
 {json.dumps(candidates, ensure_ascii=False, indent=2)}
 
 Return a JSON array of exactly {count} objects, each with:
-{{
-  "id": <product_id>,
-  "reason": "1-2 sentences why this product matches the store"
-}}
+{{"id": <product_id>, "reason": "1-2 sentences why this product matches the store"}}
 
 Return ONLY valid JSON array, no markdown."""
 
                 client = _ai_client()
-                resp = await client.chat.completions.create(
+                resp = client.chat.completions.create(
                     model=settings.ai_model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.3,
@@ -235,20 +264,18 @@ Return ONLY valid JSON array, no markdown."""
                 ranked = json.loads(raw.strip())
                 ranked_ids = [r["id"] for r in ranked if "id" in r]
                 reasons = {r["id"]: r.get("reason", "") for r in ranked}
-                # 按 AI 排序重排 candidates
                 id_to_c = {c["id"]: c for c in candidates}
                 recommended = [id_to_c[i] for i in ranked_ids if i in id_to_c][:count]
             except Exception:
-                pass  # 降级为默认排序
+                pass
 
-        # 4. 合并 reason 写入 output
         output = [
             {**c, "rec_reason": reasons.get(c["id"], f"符合店铺 {niche} 定位")}
             for c in recommended
         ]
 
-        await _update_task(task_id, status="success", progress=100,
-                           output_data={"products": output, "niche": niche})
+        _update_task(task_id, status="success", progress=100,
+                     output_data={"products": output, "niche": niche})
 
     except Exception as e:
-        await _update_task(task_id, status="failed", error_message=str(e))
+        _update_task(task_id, status="failed", error_message=str(e))
