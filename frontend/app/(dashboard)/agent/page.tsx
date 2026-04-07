@@ -1,11 +1,13 @@
 "use client"
+import { useEffect, useRef, useState } from "react"
 import { Header } from "@/components/layout/header"
 import { AgentTaskCard } from "@/components/agent/agent-task-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Sparkles, Zap, ChevronRight } from "lucide-react"
+import { Loader2, Sparkles, Zap, ChevronRight } from "lucide-react"
+import { agentApi, type AgentTask } from "@/lib/api"
 
 const agentCapabilities = [
   {
@@ -64,14 +66,34 @@ const agentCapabilities = [
   },
 ]
 
-const mockTasks = [
-  { id: 1, task_type: "store_profile", status: "success" as const, progress: 100, error_message: null, created_at: "今天 10:32" },
-  { id: 2, task_type: "auto_discovery", status: "success" as const, progress: 100, error_message: null, created_at: "今天 10:45" },
-  { id: 3, task_type: "copywriting", status: "running" as const, progress: 68, error_message: null, created_at: "今天 11:02" },
-  { id: 4, task_type: "image_processing", status: "pending" as const, progress: 0, error_message: null, created_at: "今天 11:05" },
-]
-
 export default function AgentPage() {
+  const [tasks, setTasks] = useState<AgentTask[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(true)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const loadTasks = async () => {
+    try {
+      const res = await agentApi.listTasks()
+      setTasks(res.data || [])
+    } catch { } finally { setLoadingTasks(false) }
+  }
+
+  useEffect(() => {
+    loadTasks()
+  }, [])
+
+  // 有 pending/running 任务时每 3s 轮询
+  useEffect(() => {
+    const hasActive = tasks.some(t => t.status === "pending" || t.status === "running")
+    if (hasActive && !pollRef.current) {
+      pollRef.current = setInterval(loadTasks, 3000)
+    } else if (!hasActive && pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
+  }, [tasks])
+
   return (
     <div className="flex flex-col min-h-full">
       <Header title="AI Agent 工作台" />
@@ -154,31 +176,47 @@ export default function AgentPage() {
               任务队列
             </h2>
             <div className="space-y-2">
-              {mockTasks.map(task => (
-                <AgentTaskCard key={task.id} task={task} />
-              ))}
+              {loadingTasks ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> 加载中...
+                </div>
+              ) : tasks.length === 0 ? (
+                <div className="text-xs text-muted-foreground py-4 text-center">
+                  暂无任务记录，去店铺管理页启动 AI 诊脉
+                </div>
+              ) : (
+                tasks.slice(0, 10).map(task => (
+                  <AgentTaskCard key={task.id} task={task} />
+                ))
+              )}
             </div>
 
-            {/* Daily Stats */}
+            {/* Stats from real tasks */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-xs">今日 Agent 统计</CardTitle>
+                <CardTitle className="text-xs">任务统计</CardTitle>
               </CardHeader>
               <CardContent className="pt-2 space-y-3">
-                {[
-                  { label: "处理商品数", value: 5, total: 10, color: "bg-primary" },
-                  { label: "图片处理", value: 12, total: 20, color: "bg-violet-500" },
-                  { label: "视频生成", value: 3, total: 5, color: "bg-pink-500" },
-                  { label: "成功上架", value: 3, total: 5, color: "bg-emerald-500" },
-                ].map(s => (
-                  <div key={s.label}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">{s.label}</span>
-                      <span className="text-foreground font-medium">{s.value}/{s.total}</span>
+                {(() => {
+                  const total = tasks.length || 1
+                  const success = tasks.filter(t => t.status === "success").length
+                  const running = tasks.filter(t => t.status === "running" || t.status === "pending").length
+                  const failed = tasks.filter(t => t.status === "failed").length
+                  return [
+                    { label: "累计任务", value: tasks.length, total: Math.max(tasks.length, 1), color: "bg-primary" },
+                    { label: "成功完成", value: success, total: Math.max(tasks.length, 1), color: "bg-emerald-500" },
+                    { label: "进行中", value: running, total: Math.max(tasks.length, 1), color: "bg-amber-500" },
+                    { label: "失败", value: failed, total: Math.max(tasks.length, 1), color: "bg-red-500" },
+                  ].map(s => (
+                    <div key={s.label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">{s.label}</span>
+                        <span className="text-foreground font-medium">{s.value}</span>
+                      </div>
+                      <Progress value={(s.value / s.total) * 100} color={s.color} />
                     </div>
-                    <Progress value={(s.value / s.total) * 100} color={s.color} />
-                  </div>
-                ))}
+                  ))
+                })()}
               </CardContent>
             </Card>
           </div>
