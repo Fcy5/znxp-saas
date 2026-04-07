@@ -27,8 +27,8 @@ async def _update_task(task_id: int, **kwargs):
 
 
 def _ai_client():
-    from openai import OpenAI
-    return OpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
+    from openai import AsyncOpenAI
+    return AsyncOpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
 
 
 # ── store_profile ─────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ Return a JSON object with exactly these keys:
 Return ONLY valid JSON, no markdown."""
 
         client = _ai_client()
-        resp = client.chat.completions.create(
+        resp = await client.chat.completions.create(
             model=settings.ai_model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
@@ -216,7 +216,7 @@ Return a JSON array of exactly {count} objects, each with:
 Return ONLY valid JSON array, no markdown."""
 
                 client = _ai_client()
-                resp = client.chat.completions.create(
+                resp = await client.chat.completions.create(
                     model=settings.ai_model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.3,
