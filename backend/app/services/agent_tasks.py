@@ -18,12 +18,20 @@ from app.core.config import settings
 # ── 工具函数 ───────────────────────────────────────────────────────────────────
 
 async def _update_task(task_id: int, **kwargs):
+    from sqlalchemy import text
+    set_parts = []
+    values: dict = {"task_id": task_id}
+    for k, v in kwargs.items():
+        if isinstance(v, dict) or isinstance(v, list):
+            v = json.dumps(v, ensure_ascii=False)
+        set_parts.append(f"`{k}` = :{k}")
+        values[k] = v
+    if not set_parts:
+        return
+    sql = f"UPDATE agent_tasks SET {', '.join(set_parts)} WHERE id = :task_id"
     async with AsyncSessionLocal() as db:
-        task = await db.get(AgentTask, task_id)
-        if task:
-            for k, v in kwargs.items():
-                setattr(task, k, v)
-            await db.commit()
+        await db.execute(text(sql), values)
+        await db.commit()
 
 
 def _ai_client():
