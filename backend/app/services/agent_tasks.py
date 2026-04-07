@@ -114,7 +114,7 @@ Return ONLY valid JSON, no markdown, no extra text."""
         client = _ai_client()
         _update_task(task_id, progress=50)
         resp = client.chat.completions.create(
-            model="google/gemini-2.5-pro",
+            model="google/gemini-3.1-pro-preview",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
         )
