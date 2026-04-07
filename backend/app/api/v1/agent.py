@@ -24,6 +24,8 @@ async def _create_task(db, user_id: int, task_type: str,
                        product_id: int | None = None,
                        shop_id: int | None = None,
                        input_data: dict | None = None) -> AgentTask:
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
     task = AgentTask(
         user_id=user_id,
         task_type=task_type,
@@ -32,6 +34,8 @@ async def _create_task(db, user_id: int, task_type: str,
         product_id=product_id,
         shop_id=shop_id,
         input_data=input_data,
+        created_at=now,
+        updated_at=now,
     )
     db.add(task)
     await db.flush()   # 获取自增 id
