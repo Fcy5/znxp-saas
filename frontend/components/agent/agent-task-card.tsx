@@ -15,6 +15,7 @@ interface AgentTask {
 const taskMeta: Record<string, { label: string; icon: string }> = {
   store_profile: { label: "店铺智能诊脉", icon: "🔍" },
   auto_discovery: { label: "零提示词自动推品", icon: "🎯" },
+  batch_copywriting: { label: "SEO & GEO 批量文案", icon: "✍️" },
   copywriting: { label: "SEO & GEO 文案重构", icon: "✍️" },
   image_processing: { label: "图片深度处理", icon: "🖼️" },
   video_generation: { label: "视频全自动二创", icon: "🎬" },
