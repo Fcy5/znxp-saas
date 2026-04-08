@@ -7,6 +7,8 @@ import pymysql
 import pymysql.cursors
 from datetime import datetime
 from openai import OpenAI
+import httpx
+from bs4 import BeautifulSoup
 from app.core.config import settings
 
 
@@ -55,8 +57,58 @@ def _ai_client():
 
 # ── store_profile ─────────────────────────────────────────────────────────────
 
+def _fetch_store_content(shop_url: str) -> dict:
+    """抓取店铺页面内容，返回结构化文本"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    result = {"homepage": "", "products": [], "meta": {}}
+
+    with httpx.Client(timeout=15, follow_redirects=True) as client:
+        # 1. 抓首页
+        try:
+            r = client.get(shop_url, headers=headers)
+            if r.status_code == 200:
+                soup = BeautifulSoup(r.text, "lxml")
+                # 移除无用标签
+                for tag in soup(["script", "style", "nav", "footer", "iframe", "noscript"]):
+                    tag.decompose()
+                # 提取 meta 信息
+                title = soup.find("title")
+                desc = soup.find("meta", attrs={"name": "description"})
+                result["meta"]["title"] = title.get_text(strip=True) if title else ""
+                result["meta"]["description"] = desc.get("content", "") if desc else ""
+                # 提取主要文本（限 3000 字符）
+                text = soup.get_text(separator="\n", strip=True)
+                lines = [l for l in text.splitlines() if len(l.strip()) > 10]
+                result["homepage"] = "\n".join(lines[:150])
+        except Exception:
+            pass
+
+        # 2. 抓 /products.json（Shopify 原生接口，不需要登录）
+        try:
+            r = client.get(f"{shop_url.rstrip('/')}/products.json?limit=10", headers=headers)
+            if r.status_code == 200:
+                data = r.json()
+                for p in data.get("products", [])[:10]:
+                    variants = p.get("variants", [])
+                    prices = [float(v["price"]) for v in variants if v.get("price")]
+                    result["products"].append({
+                        "title": p.get("title", ""),
+                        "type": p.get("product_type", ""),
+                        "tags": p.get("tags", [])[:5],
+                        "price_min": min(prices) if prices else None,
+                        "price_max": max(prices) if prices else None,
+                    })
+        except Exception:
+            pass
+
+    return result
+
+
 def run_store_profile(task_id: int, shop_id: int, user_id: int):
-    """Gemini 通过店铺 URL 直接生成店铺画像（同步，pymysql）"""
+    """抓取店铺真实页面内容，用 AI 生成店铺诊断报告"""
     _update_task(task_id, status="running", progress=10)
     try:
         # 1. 取店铺信息
@@ -79,40 +131,65 @@ def run_store_profile(task_id: int, shop_id: int, user_id: int):
         shop_name = row["name"]
         shop_url = f"https://{domain}" if not domain.startswith("http") else domain
 
-        _update_task(task_id, progress=30)
+        # 2. 抓取店铺页面
+        _update_task(task_id, progress=20)
+        content = _fetch_store_content(shop_url)
 
-        # 2. AI 直接分析店铺 URL
+        _update_task(task_id, progress=50)
+
         if not settings.ai_api_key:
             _update_task(task_id, status="failed", error_message="AI API Key 未配置")
             return
 
+        # 3. 组装真实内容给 AI
+        products_text = ""
+        if content["products"]:
+            products_text = "Products found on store:\n" + "\n".join(
+                f"- {p['title']} | type: {p['type']} | price: ${p['price_min']}~${p['price_max']} | tags: {', '.join(p['tags'])}"
+                for p in content["products"]
+            )
+        else:
+            products_text = "No product data retrieved (store may require login or block crawlers)."
+
+        homepage_text = content["homepage"][:2000] if content["homepage"] else "Homepage content not available."
+        meta_title = content["meta"].get("title", "")
+        meta_desc = content["meta"].get("description", "")
+
         prompt = f"""You are a senior e-commerce consultant specializing in Shopify stores and cross-border e-commerce.
 
-Analyze this Shopify store and provide a professional diagnosis:
+Analyze this Shopify store based on its REAL page content scraped below:
 
 Store name: {shop_name}
 Store URL: {shop_url}
+Page title: {meta_title}
+Meta description: {meta_desc}
 
-Based on your knowledge of this store, its niche, competitors, and e-commerce best practices, provide:
+--- Homepage Content ---
+{homepage_text}
+
+--- Product Catalog (sample) ---
+{products_text}
+
+Based on the ACTUAL content above, provide a professional diagnosis:
 1. What niche/market this store is in
 2. Who the target customers are
-3. What problems or weaknesses this store likely has (product selection, pricing, branding, marketing, etc.)
-4. Key opportunities for improvement
+3. Real problems or weaknesses you can see (product selection, pricing, branding, copy, trust signals, etc.)
+4. Concrete opportunities for improvement
 
 Return a JSON object with exactly these keys:
 {{
   "niche": "1-3 word product niche (e.g. 'custom embroidery', 'pet portraits', 'wedding gifts')",
   "target_audience": "2-3 sentences describing target customers",
-  "price_range_min": <estimated lowest price in USD as number>,
-  "price_range_max": <estimated highest price in USD as number>,
+  "price_range_min": <lowest price found in USD as number, or estimate if not found>,
+  "price_range_max": <highest price found in USD as number, or estimate if not found>,
   "visual_style": "1-3 words describing the store visual style",
-  "profile_summary": "3-4 sentences diagnosing the store: current positioning, main problems, and top opportunities to improve sales"
+  "profile_summary": "3-4 sentences diagnosing the store based on actual content: current positioning, real problems observed, and top opportunities to improve sales"
 }}
 
 Return ONLY valid JSON, no markdown, no extra text."""
 
         client = _ai_client()
-        _update_task(task_id, progress=50)
+        _update_task(task_id, progress=70)
         resp = client.chat.completions.create(
             model="google/gemini-3.1-pro-preview",
             messages=[{"role": "user", "content": prompt}],
@@ -125,7 +202,7 @@ Return ONLY valid JSON, no markdown, no extra text."""
                 raw = raw[4:]
         data = json.loads(raw.strip())
 
-        _update_task(task_id, progress=80)
+        _update_task(task_id, progress=85)
 
         # 3. 写回 shop 表
         conn = _db()
