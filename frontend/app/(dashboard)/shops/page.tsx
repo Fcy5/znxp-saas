@@ -8,10 +8,38 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import {
   Store, Plus, ExternalLink, Trash2, Loader2,
-  CheckCircle2, AlertCircle, Bot, Sparkles, ChevronDown, ChevronUp, X,
+  CheckCircle2, AlertCircle, Bot, Sparkles, ChevronDown, ChevronUp, X, History,
 } from "lucide-react"
 import { shopApi, agentApi, type Shop, type AgentTask } from "@/lib/api"
 import Link from "next/link"
+
+// ── 简易 Markdown 渲染（支持 ### 标题 + **bold**）────────────────────────────
+function SimpleMarkdown({ text }: { text: string }) {
+  const lines = text.split("\n")
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        if (line.startsWith("### ")) {
+          return <p key={i} className="font-semibold text-foreground mt-2 first:mt-0">{line.slice(4)}</p>
+        }
+        if (line.startsWith("**") && line.endsWith("**")) {
+          return <p key={i} className="font-medium text-foreground">{line.slice(2, -2)}</p>
+        }
+        // inline bold: **text**
+        const parts = line.split(/(\*\*[^*]+\*\*)/)
+        return (
+          <p key={i} className="text-muted-foreground leading-relaxed">
+            {parts.map((part, j) =>
+              part.startsWith("**") && part.endsWith("**")
+                ? <strong key={j} className="text-foreground font-medium">{part.slice(2, -2)}</strong>
+                : part
+            )}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
 
 // ── 任务状态颜色 ──────────────────────────────────────────────────────────────
 const taskStatusLabel: Record<string, string> = {
@@ -94,6 +122,72 @@ function TaskCard({ task, onDismiss }: { task: AgentTask; onDismiss: () => void 
               ))}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 诊脉历史记录 ──────────────────────────────────────────────────────────────
+function DiagnosisHistory({ shopId }: { shopId: number }) {
+  const [history, setHistory] = useState<AgentTask[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(false)
+  const [openId, setOpenId] = useState<number | null>(null)
+
+  useEffect(() => {
+    agentApi.listShopDiagnosis(shopId)
+      .then(res => setHistory(res.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [shopId])
+
+  const successHistory = history.filter(t => t.status === "success")
+  if (loading) return null
+  if (successHistory.length === 0) return null
+
+  return (
+    <div className="border-t border-border pt-3">
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+      >
+        <History className="w-3.5 h-3.5" />
+        <span>诊脉历史 ({successHistory.length} 条)</span>
+        {expanded ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-1.5">
+          {successHistory.map(task => {
+            const output = task.output_data as Record<string, unknown> | null
+            const isOpen = openId === task.id
+            const date = new Date(task.created_at).toLocaleString("zh-CN", {
+              month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+            })
+            return (
+              <div key={task.id} className="rounded-lg border border-border bg-secondary/50">
+                <button
+                  onClick={() => setOpenId(isOpen ? null : task.id)}
+                  className="flex items-center justify-between w-full px-3 py-2 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span className="text-foreground">{date}</span>
+                    {output?.niche && (
+                      <span className="text-muted-foreground">· {String(output.niche)}</span>
+                    )}
+                  </div>
+                  {isOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+                </button>
+                {isOpen && output?.profile_summary && (
+                  <div className="px-3 pb-3 pt-1 border-t border-border text-xs">
+                    <SimpleMarkdown text={String(output.profile_summary)} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -201,6 +295,9 @@ function ShopCard({ shop, onDelete }: { shop: Shop; onDelete: () => void }) {
             <ExternalLink className="w-3 h-3" /> 访问店铺
           </Button>
         </div>
+
+        {/* Diagnosis History */}
+        <DiagnosisHistory shopId={shop.id} />
 
         {/* Delete */}
         <button

@@ -383,14 +383,21 @@ async def trigger_publish(
 # ── 任务查询 ──────────────────────────────────────────────────────────────────
 
 @router.get("/tasks", response_model=Response[list[AgentTaskResponse]])
-async def list_tasks(current_user_id: CurrentUser, db: DBSession):
-    """获取当前用户所有 Agent 任务（最近 50 条，按创建时间倒序）"""
-    result = await db.execute(
-        select(AgentTask)
-        .where(AgentTask.user_id == current_user_id, AgentTask.is_deleted == False)
-        .order_by(AgentTask.created_at.desc())
-        .limit(50)
+async def list_tasks(
+    current_user_id: CurrentUser, db: DBSession,
+    shop_id: int | None = None,
+    task_type: str | None = None,
+):
+    """获取当前用户 Agent 任务，支持按 shop_id / task_type 过滤（最近 50 条）"""
+    q = select(AgentTask).where(
+        AgentTask.user_id == current_user_id,
+        AgentTask.is_deleted == False,
     )
+    if shop_id is not None:
+        q = q.where(AgentTask.shop_id == shop_id)
+    if task_type is not None:
+        q = q.where(AgentTask.task_type == task_type)
+    result = await db.execute(q.order_by(AgentTask.created_at.desc()).limit(50))
     tasks = result.scalars().all()
     return Response(data=[_task_resp(t) for t in tasks])
 

@@ -457,4 +457,7 @@ export const agentApi = {
 
   listTasks: () =>
     request<ApiResponse<AgentTask[]>>("/agent/tasks"),
+
+  listShopDiagnosis: (shop_id: number) =>
+    request<ApiResponse<AgentTask[]>>(`/agent/tasks?shop_id=${shop_id}&task_type=store_profile`),
 }
