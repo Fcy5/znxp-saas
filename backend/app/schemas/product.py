@@ -34,6 +34,7 @@ class ProductDetail(ProductCard):
     seo_title: str | None = None
     meta_description: str | None = None
     alt_tags: list | None = None
+    ai_description: str | None = None
 
 
 class ProductRecommendation(ProductCard):

@@ -122,8 +122,8 @@ export const productApi = {
   unsave: (id: number) =>
     request<ApiResponse<null>>(`/products/${id}/save`, { method: "DELETE" }),
 
-  myLibrary: (page = 1, page_size = 20) =>
-    request<PagedResponse<ProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}`),
+  myLibrary: (page = 1, page_size = 20, keyword?: string) =>
+    request<PagedResponse<ProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`),
 
   batchSave: (product_ids: number[]) =>
     request<ApiResponse<null>>("/products/batch-save", {
@@ -433,6 +433,7 @@ export interface ProductDetail {
   seo_title: string | null
   meta_description: string | null
   alt_tags: string[] | null
+  ai_description: string | null
   images: unknown[] | null
   variants: unknown[] | null
   review_score: number | null
@@ -481,9 +482,9 @@ export const agentApi = {
   listShopDiagnosis: (shop_id: number) =>
     request<ApiResponse<AgentTask[]>>(`/agent/tasks?shop_id=${shop_id}&task_type=store_profile`),
 
-  batchCopywriting: (shop_id: number, count = 10) =>
+  batchCopywriting: (product_ids: number[], shop_id?: number) =>
     request<ApiResponse<AgentTask>>("/agent/batch-copywriting", {
       method: "POST",
-      body: JSON.stringify({ shop_id, count }),
+      body: JSON.stringify({ product_ids, shop_id: shop_id ?? null }),
     }),
 }

@@ -122,7 +122,7 @@ async def trigger_batch_copywriting(
     await db.commit()
 
     from app.services.agent_tasks import run_batch_copywriting
-    background_tasks.add_task(run_batch_copywriting, task.id, body.shop_id, current_user_id, body.count)
+    background_tasks.add_task(run_batch_copywriting, task.id, current_user_id, body.product_ids, body.shop_id)
 
     return Response(data=_task_resp(task), message="批量文案生成已启动，请稍后查看结果")
 

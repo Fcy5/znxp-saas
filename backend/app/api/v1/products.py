@@ -256,6 +256,7 @@ async def get_my_library(
     db: DBSession,
     page: int = Query(1),
     page_size: int = Query(20),
+    keyword: str | None = Query(None),
 ):
     q = (
         select(Product)
@@ -264,10 +265,12 @@ async def get_my_library(
         .where(UserProduct.is_deleted == False)
         .where(Product.is_deleted == False)
     )
+    if keyword:
+        q = q.where(Product.title.ilike(f"%{keyword}%"))
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar() or 0
 
-    data_q = q.offset((page - 1) * page_size).limit(page_size)
+    data_q = q.order_by(Product.ai_score.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(data_q)
     products = result.scalars().all()
 

@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Loader2, Sparkles, Zap, ChevronRight, X } from "lucide-react"
-import { agentApi, shopApi, type AgentTask, type Shop } from "@/lib/api"
+import { Loader2, Sparkles, Zap, ChevronRight, X, Search, Check } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { agentApi, shopApi, productApi, type AgentTask, type Shop, type ProductCard } from "@/lib/api"
 
 const agentCapabilities = [
   {
@@ -133,6 +134,126 @@ function ShopSelectModal({
   )
 }
 
+// ── 选品弹窗（批量文案用）────────────────────────────────────────────────────
+function ProductPickerModal({ onConfirm, onClose }: {
+  onConfirm: (productIds: number[], shopId?: number) => void
+  onClose: () => void
+}) {
+  const [products, setProducts] = useState<ProductCard[]>([])
+  const [loading, setLoading] = useState(true)
+  const [keyword, setKeyword] = useState("")
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [shops, setShops] = useState<Shop[]>([])
+  const [shopId, setShopId] = useState<number | undefined>()
+
+  useEffect(() => {
+    shopApi.list().then(r => { setShops(r.data || []); if (r.data?.[0]) setShopId(r.data[0].id) })
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    productApi.myLibrary(1, 50, keyword || undefined)
+      .then(r => setProducts(r.data || []))
+      .finally(() => setLoading(false))
+  }, [keyword])
+
+  const toggle = (id: number) => setSelected(prev => {
+    const s = new Set(prev)
+    s.has(id) ? s.delete(id) : s.add(id)
+    return s
+  })
+  const toggleAll = () => {
+    if (selected.size === products.length) setSelected(new Set())
+    else setSelected(new Set(products.map(p => p.id)))
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+      <Card className="w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <CardHeader className="shrink-0 pb-3">
+          <CardTitle className="flex items-center justify-between text-sm">
+            选择要生成文案的商品
+            <button onClick={onClose}><X className="w-4 h-4 text-muted-foreground" /></button>
+          </CardTitle>
+          <div className="relative mt-2">
+            <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              className="pl-8 h-8 text-xs"
+              placeholder="搜索商品标题..."
+              value={keyword}
+              onChange={e => setKeyword(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+
+        <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-1.5">
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-6 justify-center">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> 加载中...
+            </div>
+          ) : products.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-6">选品库为空，请先去「选品大厅」加入商品</p>
+          ) : (
+            <>
+              <button onClick={toggleAll} className="text-xs text-primary hover:underline mb-1">
+                {selected.size === products.length ? "取消全选" : `全选 (${products.length})`}
+              </button>
+              {products.map(p => (
+                <div
+                  key={p.id}
+                  onClick={() => toggle(p.id)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                    selected.has(p.id) ? "border-primary/50 bg-primary/5" : "border-border hover:border-border/80 hover:bg-secondary/50"
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                    selected.has(p.id) ? "bg-primary border-primary" : "border-muted-foreground"
+                  }`}>
+                    {selected.has(p.id) && <Check className="w-2.5 h-2.5 text-white" />}
+                  </div>
+                  {p.main_image && (
+                    <img src={p.main_image} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">{p.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{p.category} · ${p.price ?? "—"}</p>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        <div className="shrink-0 px-4 pb-4 pt-3 border-t border-border space-y-3">
+          {shops.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground shrink-0">参考店铺风格：</span>
+              <select
+                className="flex-1 text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground"
+                value={shopId ?? ""}
+                onChange={e => setShopId(e.target.value ? Number(e.target.value) : undefined)}
+              >
+                <option value="">不指定</option>
+                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>取消</Button>
+            <Button
+              size="sm" className="flex-1"
+              disabled={selected.size === 0}
+              onClick={() => onConfirm(Array.from(selected), shopId)}
+            >
+              生成文案（{selected.size} 件）
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
 export default function AgentPage() {
   const router = useRouter()
   const [tasks, setTasks] = useState<AgentTask[]>([])
@@ -170,10 +291,19 @@ export default function AgentPage() {
         task = (await agentApi.storeProfile(shop.domain)).data!
       } else if (type === "auto_discovery") {
         task = (await agentApi.autoDiscovery(shop.id, 10)).data!
-      } else if (type === "batch_copywriting") {
-        task = (await agentApi.batchCopywriting(shop.id, 10)).data!
       }
       if (task) setTasks(prev => [task!, ...prev])
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "启动失败")
+    } finally { setLaunching(null) }
+  }
+
+  const handleLaunchCopy = async (productIds: number[], shopId?: number) => {
+    setModalType(null)
+    setLaunching("batch_copywriting")
+    try {
+      const task = (await agentApi.batchCopywriting(productIds, shopId)).data!
+      setTasks(prev => [task, ...prev])
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "启动失败")
     } finally { setLaunching(null) }
@@ -334,20 +464,24 @@ export default function AgentPage() {
         </div>
       </div>
 
-      {/* 店铺选择弹窗 */}
-      {modalType && modalType !== "workflow" && (
+      {/* 店铺选择弹窗（诊脉/推品） */}
+      {modalType && modalType !== "workflow" && modalType !== "batch_copywriting" && (
         <ShopSelectModal
-          title={
-            modalType === "store_profile" ? "选择要诊脉的店铺" :
-            modalType === "auto_discovery" ? "选择要推品的店铺" :
-            "选择要生成文案的店铺"
-          }
+          title={modalType === "store_profile" ? "选择要诊脉的店铺" : "选择要推品的店铺"}
           onSelect={(shop) => handleLaunch(modalType, shop)}
           onClose={() => setModalType(null)}
         />
       )}
 
-      {/* 一键启动工作流弹窗 */}
+      {/* 选品弹窗（批量文案） */}
+      {modalType === "batch_copywriting" && (
+        <ProductPickerModal
+          onConfirm={handleLaunchCopy}
+          onClose={() => setModalType(null)}
+        />
+      )}
+
+      {/* 一键启动工作流 */}
       {modalType === "workflow" && (
         <ShopSelectModal
           title="选择店铺，启动完整工作流"
@@ -357,8 +491,7 @@ export default function AgentPage() {
             try {
               const t1 = (await agentApi.storeProfile(shop.domain)).data!
               const t2 = (await agentApi.autoDiscovery(shop.id, 10)).data!
-              const t3 = (await agentApi.batchCopywriting(shop.id, 10)).data!
-              setTasks(prev => [t3, t2, t1, ...prev])
+              setTasks(prev => [t2, t1, ...prev])
             } catch (e: unknown) {
               alert(e instanceof Error ? e.message : "启动失败")
             } finally { setLaunching(null) }

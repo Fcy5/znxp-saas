@@ -19,9 +19,11 @@ def upgrade() -> None:
     op.add_column('products', sa.Column('seo_title', sa.String(500), nullable=True))
     op.add_column('products', sa.Column('meta_description', sa.String(500), nullable=True))
     op.add_column('products', sa.Column('alt_tags', sa.JSON(), nullable=True))
+    op.add_column('products', sa.Column('ai_description', sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
+    op.drop_column('products', 'ai_description')
     op.drop_column('products', 'alt_tags')
     op.drop_column('products', 'meta_description')
     op.drop_column('products', 'seo_title')

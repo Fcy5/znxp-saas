@@ -3,7 +3,8 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { CheckCircle2, XCircle, Clock, Loader2, ChevronDown, ChevronUp } from "lucide-react"
+import { CheckCircle2, XCircle, Clock, Loader2, ChevronDown, ChevronUp, ExternalLink } from "lucide-react"
+import Link from "next/link"
 
 interface AgentTask {
   id: number
@@ -82,11 +83,18 @@ export function AgentTaskCard({ task }: { task: AgentTask }) {
                 共处理 <span className="text-foreground font-medium">{String(output.total ?? 0)}</span> 条，
                 成功 <span className="text-emerald-400 font-medium">{String(output.success ?? 0)}</span> 条
               </p>
-              {Array.isArray(output.products) && (output.products as Record<string, unknown>[]).slice(0, 5).map((p, i) => (
-                <div key={i} className="rounded-lg bg-secondary/50 border border-border px-3 py-2 space-y-0.5">
-                  <p className="font-medium text-foreground truncate">{String(p.title)}</p>
-                  {p.seo_title && <p className="text-muted-foreground">SEO: {String(p.seo_title)}</p>}
-                  {p.meta_description && <p className="text-muted-foreground truncate">Meta: {String(p.meta_description)}</p>}
+              {Array.isArray(output.products) && (output.products as Record<string, unknown>[]).map((p, i) => (
+                <div key={i} className={`rounded-lg border px-3 py-2 space-y-0.5 ${p.error ? "border-red-500/30 bg-red-500/5" : "border-border bg-secondary/50"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium text-foreground truncate flex-1">{String(p.title)}</p>
+                    {!p.error && (
+                      <Link href={`/products/${p.product_id}`} className="shrink-0 text-primary hover:text-primary/80">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+                  </div>
+                  {p.seo_title && <p className="text-muted-foreground truncate">SEO: {String(p.seo_title)}</p>}
+                  {p.error && <p className="text-red-400 text-[10px]">{String(p.error)}</p>}
                 </div>
               ))}
             </>

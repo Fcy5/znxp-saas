@@ -354,11 +354,54 @@ export default function ProductDetailPage() {
               ))}
             </div>
 
-            {/* Description */}
+            {/* 原始描述 */}
             {p.description && (
               <Card>
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">{p.description}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* AI 生成内容 */}
+            {(p.seo_title || p.ai_description) && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-primary">AI 生成内容</span>
+                  </div>
+                  {p.seo_title && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-0.5">SEO 标题</p>
+                      <p className="text-sm font-medium text-foreground">{p.seo_title}</p>
+                    </div>
+                  )}
+                  {p.meta_description && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-0.5">Meta 描述</p>
+                      <p className="text-xs text-muted-foreground">{p.meta_description}</p>
+                    </div>
+                  )}
+                  {p.alt_tags && p.alt_tags.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-1">图片 Alt 标签</p>
+                      <div className="flex flex-wrap gap-1">
+                        {p.alt_tags.map((tag, i) => (
+                          <span key={i} className="text-[10px] bg-secondary border border-border px-2 py-0.5 rounded">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {p.ai_description && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-1">HTML 详情页</p>
+                      <div
+                        className="text-xs text-muted-foreground prose prose-sm prose-invert max-w-none line-clamp-6"
+                        dangerouslySetInnerHTML={{ __html: p.ai_description }}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

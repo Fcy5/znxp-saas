@@ -42,6 +42,7 @@ class Product(BaseModel):
     seo_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
     meta_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     alt_tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    ai_description: Mapped[str | None] = mapped_column(Text, nullable=True)  # AI生成，不覆盖原始description
 
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
 

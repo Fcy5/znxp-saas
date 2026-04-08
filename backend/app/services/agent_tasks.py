@@ -408,51 +408,53 @@ Return ONLY valid JSON array, no markdown."""
 
 # ── batch_copywriting ─────────────────────────────────────────────────────────
 
-def run_batch_copywriting(task_id: int, shop_id: int, user_id: int, count: int = 10):
-    """批量为选品库商品生成 SEO & GEO 文案，写回 products.description"""
+def run_batch_copywriting(task_id: int, user_id: int, product_ids: list, shop_id: int | None = None):
+    """批量为指定商品生成 SEO & GEO 文案，写入 ai_description/seo_title/meta_description/alt_tags"""
     _update_task(task_id, status="running", progress=5)
     try:
-        # 1. 取店铺信息
-        conn = _db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT name, niche, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
-                    (shop_id, user_id)
-                )
-                shop = cur.fetchone()
-        finally:
-            conn.close()
+        # 1. 取店铺 niche（可选，用于优化文案风格）
+        niche = "custom embroidery"
+        target_audience = ""
+        if shop_id:
+            conn = _db()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT niche, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                        (shop_id, user_id)
+                    )
+                    shop = cur.fetchone()
+                    if shop:
+                        niche = shop.get("niche") or niche
+                        target_audience = shop.get("target_audience") or ""
+            finally:
+                conn.close()
 
-        if not shop:
-            _update_task(task_id, status="failed", error_message="店铺不存在")
+        # 2. 取指定商品（校验归属于该用户选品库）
+        if not product_ids:
+            _update_task(task_id, status="failed", error_message="未选择任何商品")
             return
 
-        niche = shop.get("niche") or "custom embroidery"
-        target_audience = shop.get("target_audience") or ""
-
-        # 2. 取用户选品库中没有文案的商品
+        placeholders = ",".join(["%s"] * len(product_ids))
         conn = _db()
         try:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(f"""
                     SELECT p.id, p.title, p.category, p.price, p.main_image,
                            p.description, p.source_platform
                     FROM user_products up
                     JOIN products p ON p.id = up.product_id
                     WHERE up.user_id = %s AND up.is_deleted = 0
                       AND p.is_deleted = 0
-                      AND (p.seo_title IS NULL OR p.seo_title = '')
+                      AND p.id IN ({placeholders})
                     ORDER BY p.ai_score DESC
-                    LIMIT %s
-                """, (user_id, count))
+                """, [user_id] + list(product_ids))
                 products = cur.fetchall()
         finally:
             conn.close()
 
         if not products:
-            _update_task(task_id, status="failed",
-                         error_message="选品库中没有需要生成文案的商品（文案已全部生成或库为空）")
+            _update_task(task_id, status="failed", error_message="所选商品不在你的选品库中")
             return
 
         total = len(products)
@@ -514,20 +516,20 @@ Rules: natural keywords, warm gift-oriented tone, Q&A for GEO/AI search, return 
                         raw = raw[4:]
                 copy_data = json.loads(raw.strip())
 
-                html_desc = copy_data.get("html_description") or ""
+                ai_desc = copy_data.get("html_description") or ""
                 seo_title = (copy_data.get("seo_title") or "")[:500]
                 meta_desc = (copy_data.get("meta_description") or "")[:500]
                 alt_tags = copy_data.get("alt_tags") or []
-                if html_desc or seo_title:
+                if ai_desc or seo_title:
                     conn = _db()
                     try:
                         with conn.cursor() as cur:
                             cur.execute(
                                 """UPDATE products
-                                   SET description=%s, seo_title=%s, meta_description=%s,
+                                   SET ai_description=%s, seo_title=%s, meta_description=%s,
                                        alt_tags=%s, updated_at=NOW()
                                    WHERE id=%s""",
-                                (html_desc or None, seo_title or None, meta_desc or None,
+                                (ai_desc or None, seo_title or None, meta_desc or None,
                                  json.dumps(alt_tags, ensure_ascii=False), product["id"])
                             )
                         conn.commit()

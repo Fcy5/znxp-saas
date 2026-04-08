@@ -30,8 +30,9 @@ class CopywritingRequest(BaseModel):
 
 
 class BatchCopywritingRequest(BaseModel):
-    shop_id: int
-    count: int = 10  # 本次批量处理数量
+    shop_id: int | None = None   # 可选，提供则用店铺 niche 优化文案风格
+    product_ids: list[int]       # 用户手动选择的商品 ID 列表
+    count: int = 10
 
 
 class CopywritingResult(BaseModel):
