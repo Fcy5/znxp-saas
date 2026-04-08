@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.models.product import Product
 from app.models.agent_task import AgentTask
 from app.schemas.agent import (
-    StoreProfileRequest, AutoDiscoveryRequest,
+    StoreProfileRequest, AutoDiscoveryRequest, BatchCopywritingRequest,
     CopywritingRequest, CopywritingResult,
     ImageProcessRequest, ImageGenerateRequest, ImageGenerateResult,
     SocialCopyRequest, SocialCopyResult,
@@ -104,6 +104,27 @@ async def trigger_auto_discovery(
     background_tasks.add_task(run_auto_discovery, task.id, body.shop_id, current_user_id, body.count)
 
     return Response(data=_task_resp(task), message="智能推品已启动，请稍后查看结果")
+
+
+# ── batch_copywriting（异步）─────────────────────────────────────────────────
+
+@router.post("/batch-copywriting", response_model=Response[AgentTaskResponse])
+async def trigger_batch_copywriting(
+    body: BatchCopywritingRequest,
+    background_tasks: BackgroundTasks,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    """批量为选品库商品生成 SEO & GEO 文案（异步执行）"""
+    task = await _create_task(db, current_user_id, "batch_copywriting",
+                              shop_id=body.shop_id,
+                              input_data={"shop_id": body.shop_id, "count": body.count})
+    await db.commit()
+
+    from app.services.agent_tasks import run_batch_copywriting
+    background_tasks.add_task(run_batch_copywriting, task.id, body.shop_id, current_user_id, body.count)
+
+    return Response(data=_task_resp(task), message="批量文案生成已启动，请稍后查看结果")
 
 
 # ── copywriting（同步，直接返回）─────────────────────────────────────────────

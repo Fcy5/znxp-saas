@@ -404,3 +404,146 @@ Return ONLY valid JSON array, no markdown."""
 
     except Exception as e:
         _update_task(task_id, status="failed", error_message=str(e))
+
+
+# ── batch_copywriting ─────────────────────────────────────────────────────────
+
+def run_batch_copywriting(task_id: int, shop_id: int, user_id: int, count: int = 10):
+    """批量为选品库商品生成 SEO & GEO 文案，写回 products.description"""
+    _update_task(task_id, status="running", progress=5)
+    try:
+        # 1. 取店铺信息
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT name, niche, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                    (shop_id, user_id)
+                )
+                shop = cur.fetchone()
+        finally:
+            conn.close()
+
+        if not shop:
+            _update_task(task_id, status="failed", error_message="店铺不存在")
+            return
+
+        niche = shop.get("niche") or "custom embroidery"
+        target_audience = shop.get("target_audience") or ""
+
+        # 2. 取用户选品库中没有文案的商品
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.id, p.title, p.category, p.price, p.main_image,
+                           p.description, p.source_platform
+                    FROM user_products up
+                    JOIN products p ON p.id = up.product_id
+                    WHERE up.user_id = %s AND up.is_deleted = 0
+                      AND p.is_deleted = 0
+                      AND (p.description IS NULL OR p.description = '' OR LENGTH(p.description) < 100)
+                    ORDER BY p.ai_score DESC
+                    LIMIT %s
+                """, (user_id, count))
+                products = cur.fetchall()
+        finally:
+            conn.close()
+
+        if not products:
+            _update_task(task_id, status="failed",
+                         error_message="选品库中没有需要生成文案的商品（文案已全部生成或库为空）")
+            return
+
+        total = len(products)
+        _update_task(task_id, progress=10)
+
+        if not settings.ai_api_key:
+            _update_task(task_id, status="failed", error_message="AI API Key 未配置")
+            return
+
+        client = _ai_client()
+        results = []
+
+        for i, product in enumerate(products):
+            progress = 10 + int((i / total) * 85)
+            _update_task(task_id, progress=progress)
+
+            title = product["title"] or ""
+            category = product["category"] or ""
+            price = product["price"]
+            img_url = product["main_image"] or ""
+
+            prompt = f"""You are an expert e-commerce copywriter for a Shopify store selling custom embroidery and personalized gifts to North American buyers.
+
+Store niche: {niche}
+Target audience: {target_audience}
+
+Product:
+- Title: {title}
+- Category: {category}
+- Price: ${price or "N/A"}
+
+Generate SEO & GEO-optimized copy in English. Return JSON:
+{{
+  "seo_title": "SEO title under 70 chars with primary keyword",
+  "meta_description": "Meta description under 155 chars with CTA",
+  "html_description": "Full HTML description: <h2> headline, <p> opening, <ul> features (5 bullets), <h3>Q:</h3><p>A:</p> FAQ (3 questions). Min 250 words.",
+  "alt_tags": ["main image alt", "lifestyle alt", "detail alt"]
+}}
+
+Rules: natural keywords, warm gift-oriented tone, Q&A for GEO/AI search, return ONLY valid JSON."""
+
+            messages: list = [{"role": "user", "content": prompt}]
+            if img_url and img_url.startswith("http"):
+                messages = [{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": img_url}},
+                    {"type": "text", "text": prompt},
+                ]}]
+
+            try:
+                resp = client.chat.completions.create(
+                    model=settings.ai_model,
+                    messages=messages,
+                    temperature=0.5,
+                )
+                raw = resp.choices[0].message.content.strip()
+                if raw.startswith("```"):
+                    raw = raw.split("```")[1]
+                    if raw.startswith("json"):
+                        raw = raw[4:]
+                copy_data = json.loads(raw.strip())
+
+                html_desc = copy_data.get("html_description") or ""
+                if html_desc:
+                    conn = _db()
+                    try:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                "UPDATE products SET description=%s, updated_at=NOW() WHERE id=%s",
+                                (html_desc, product["id"])
+                            )
+                        conn.commit()
+                    finally:
+                        conn.close()
+
+                results.append({
+                    "product_id": product["id"],
+                    "title": title[:60],
+                    "seo_title": copy_data.get("seo_title", ""),
+                    "meta_description": copy_data.get("meta_description", ""),
+                    "alt_tags": copy_data.get("alt_tags", []),
+                })
+            except Exception as e:
+                results.append({"product_id": product["id"], "title": title[:60], "error": str(e)})
+
+        success_count = sum(1 for r in results if "error" not in r)
+        _update_task(task_id, status="success", progress=100, output_data={
+            "total": total,
+            "success": success_count,
+            "niche": niche,
+            "products": results,
+        })
+
+    except Exception as e:
+        _update_task(task_id, status="failed", error_message=str(e))

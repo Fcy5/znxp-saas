@@ -29,6 +29,11 @@ class CopywritingRequest(BaseModel):
     model: str | None = None  # None = 使用 .env 默认模型
 
 
+class BatchCopywritingRequest(BaseModel):
+    shop_id: int
+    count: int = 10  # 本次批量处理数量
+
+
 class CopywritingResult(BaseModel):
     seo_title: str
     meta_description: str

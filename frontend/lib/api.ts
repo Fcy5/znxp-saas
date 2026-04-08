@@ -460,4 +460,10 @@ export const agentApi = {
 
   listShopDiagnosis: (shop_id: number) =>
     request<ApiResponse<AgentTask[]>>(`/agent/tasks?shop_id=${shop_id}&task_type=store_profile`),
+
+  batchCopywriting: (shop_id: number, count = 10) =>
+    request<ApiResponse<AgentTask>>("/agent/batch-copywriting", {
+      method: "POST",
+      body: JSON.stringify({ shop_id, count }),
+    }),
 }
