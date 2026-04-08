@@ -280,7 +280,8 @@ export default function FacebookPage() {
                   <div className="aspect-video bg-secondary relative overflow-hidden cursor-pointer"
                     onClick={() => imgSrcs.length > 0 && setLightbox({ srcs: imgSrcs, idx: 0 })}>
                     {thumb ? (
-                      <img src={thumb} alt="" className="w-full h-full object-cover" />
+                      <img src={thumb} alt="" className="w-full h-full object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none" }} />
                     ) : vidSrcs[0] ? (
                       <video src={vidSrcs[0]} className="w-full h-full object-cover" muted />
                     ) : (

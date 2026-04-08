@@ -231,7 +231,9 @@ export default function ShopsPage() {
     try {
       const res = await shopApi.list()
       setShops(res.data || [])
-    } catch { } finally { setLoading(false) }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "加载失败")
+    } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])

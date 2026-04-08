@@ -113,11 +113,16 @@ export default function SuppliersPage() {
     })
   }
 
+  const [suppliersError, setSuppliersError] = useState("")
+
   const loadSuppliers = async () => {
     setSuppliersLoading(true)
+    setSuppliersError("")
     try {
       const res = await supplierApi.list(keyword || undefined)
       setSuppliers(res.data || [])
+    } catch (e: unknown) {
+      setSuppliersError(e instanceof Error ? e.message : "加载失败")
     } finally {
       setSuppliersLoading(false)
     }
@@ -237,6 +242,12 @@ export default function SuppliersPage() {
               <Plus className="w-4 h-4" /> 新增供应商
             </Button>
           </div>
+
+          {suppliersError && (
+            <div className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3">
+              加载失败：{suppliersError}
+            </div>
+          )}
 
           {suppliersLoading ? (
             <div className="flex items-center gap-2 text-muted-foreground text-sm">

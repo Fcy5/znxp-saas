@@ -66,7 +66,7 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">主菜单</p>
         {navItems.map((item) => {
-          const active = pathname.startsWith(item.href)
+          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
           return (
             <Link
               key={item.href}
@@ -75,11 +75,8 @@ export function Sidebar() {
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 group",
                 active
                   ? "bg-blue-500/10 text-blue-400"
-                  : "text-slate-400 hover:text-white"
+                  : "text-slate-400 hover:text-white hover:bg-[var(--color-sidebar-accent)]"
               )}
-              style={!active ? { "--hover-bg": "var(--color-sidebar-accent)" } as React.CSSProperties : {}}
-              onMouseEnter={!active ? (e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-sidebar-accent)" } : undefined}
-              onMouseLeave={!active ? (e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "" } : undefined}
             >
               <item.icon className={cn("w-4 h-4 shrink-0", active ? "text-blue-400" : "text-slate-500")} />
               <span className="flex-1">{item.label}</span>

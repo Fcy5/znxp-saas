@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { Header } from "@/components/layout/header"
 import { ProductCard } from "@/components/product/product-card"
 import { Input } from "@/components/ui/input"
@@ -28,6 +28,7 @@ const sortOptions = [
 export default function ProductsPage() {
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [category, setCategory] = useState("全部")
   const [platform, setPlatform] = useState("全部")
   const [shopifyBrand, setShopifyBrand] = useState("全部")
@@ -71,8 +72,17 @@ export default function ProductsPage() {
   useEffect(() => { fetchProducts() }, [fetchProducts])
   useEffect(() => { setPage(1) }, [category, platform, shopifyBrand, search, sort])
 
+  const handleSearchInput = (val: string) => {
+    setSearchInput(val)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setSearch(val)
+    }, 300)
+  }
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     setSearch(searchInput)
   }
 
@@ -198,7 +208,7 @@ export default function ProductsPage() {
                   className="pl-9"
                   placeholder="搜索商品标题、关键词..."
                   value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
+                  onChange={e => handleSearchInput(e.target.value)}
                 />
               </form>
               <div className="flex items-center gap-2">

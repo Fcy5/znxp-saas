@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!localStorage.getItem("access_token")) {
       router.replace("/login")
     }
-  }, [router])
+  }, [])
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

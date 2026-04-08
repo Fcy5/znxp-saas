@@ -39,3 +39,8 @@ backend/static/uploads/
 productSpider/__pycache__/
 productSpider/*.pyc
 productSpider/data/
+
+# Local dev only
+DEV.md
+run_spider.py
+user-manual.html

@@ -1,33 +1,32 @@
-const API_BASE = typeof window !== "undefined"
-  ? `${window.location.origin}/api/v1`
-  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1")
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ||
+  (typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.host}/api/v1`
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"))
 // 静态资源 base（去掉 /api/v1 路径）
 export const STATIC_BASE = typeof window !== "undefined"
-  ? window.location.origin
-  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1$/, "")
+  ? (process.env.NEXT_PUBLIC_STATIC_BASE || `${window.location.protocol}//${window.location.host}`)
+  : (process.env.NEXT_PUBLIC_STATIC_BASE || (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1$/, ""))
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null
   return localStorage.getItem("access_token")
 }
 
-export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestInit & { silent?: boolean } = {}): Promise<T> {
+  const { silent, ...fetchOptions } = options
   const token = getToken()
   const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
+      ...fetchOptions.headers,
     },
   })
   const json = await res.json()
   if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined") {
-      // token 失效或未登录，清掉本地状态跳回登录页
-      localStorage.removeItem("access_token")
-      window.location.href = "/login"
-      throw new Error("请重新登录")
+    if (res.status === 401) {
+      throw new Error("401")
     }
     throw new Error(json.detail || json.message || "Request failed")
   }
