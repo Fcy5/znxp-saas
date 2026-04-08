@@ -442,7 +442,7 @@ def run_batch_copywriting(task_id: int, shop_id: int, user_id: int, count: int =
                     JOIN products p ON p.id = up.product_id
                     WHERE up.user_id = %s AND up.is_deleted = 0
                       AND p.is_deleted = 0
-                      AND (p.description IS NULL OR p.description = '' OR LENGTH(p.description) < 100)
+                      AND (p.seo_title IS NULL OR p.seo_title = '')
                     ORDER BY p.ai_score DESC
                     LIMIT %s
                 """, (user_id, count))
@@ -515,13 +515,20 @@ Rules: natural keywords, warm gift-oriented tone, Q&A for GEO/AI search, return 
                 copy_data = json.loads(raw.strip())
 
                 html_desc = copy_data.get("html_description") or ""
-                if html_desc:
+                seo_title = (copy_data.get("seo_title") or "")[:500]
+                meta_desc = (copy_data.get("meta_description") or "")[:500]
+                alt_tags = copy_data.get("alt_tags") or []
+                if html_desc or seo_title:
                     conn = _db()
                     try:
                         with conn.cursor() as cur:
                             cur.execute(
-                                "UPDATE products SET description=%s, updated_at=NOW() WHERE id=%s",
-                                (html_desc, product["id"])
+                                """UPDATE products
+                                   SET description=%s, seo_title=%s, meta_description=%s,
+                                       alt_tags=%s, updated_at=NOW()
+                                   WHERE id=%s""",
+                                (html_desc or None, seo_title or None, meta_desc or None,
+                                 json.dumps(alt_tags, ensure_ascii=False), product["id"])
                             )
                         conn.commit()
                     finally:

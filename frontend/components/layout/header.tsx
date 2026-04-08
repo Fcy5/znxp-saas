@@ -1,11 +1,13 @@
 "use client"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Search, Bell, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalSearch } from "./global-search"
 
 export function Header({ title }: { title: string }) {
   const [searchOpen, setSearchOpen] = useState(false)
+  const router = useRouter()
 
   return (
     <>
@@ -26,15 +28,22 @@ export function Header({ title }: { title: string }) {
             <Search className="w-3.5 h-3.5 shrink-0" />
             搜索商品、店铺...
           </button>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
+          <button
+            onClick={() => router.push("/agent")}
+            className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors"
+          >
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
             Agent 运行中
-          </div>
-          <button className="relative p-2 rounded-lg hover:bg-[var(--color-accent)] transition-colors">
+          </button>
+          <button
+            onClick={() => router.push("/agent")}
+            className="relative p-2 rounded-lg hover:bg-[var(--color-accent)] transition-colors"
+            title="查看任务通知"
+          >
             <Bell className="w-4 h-4 text-slate-400" />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />
           </button>
-          <Button size="sm" className="gap-1.5">
+          <Button size="sm" className="gap-1.5" onClick={() => router.push("/agent")}>
             <Plus className="w-3.5 h-3.5" />
             新建任务
           </Button>
