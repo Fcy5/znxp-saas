@@ -31,6 +31,9 @@ class ProductDetail(ProductCard):
     pain_points: list | None
     source_url: str | None
     is_saved: bool = False
+    seo_title: str | None = None
+    meta_description: str | None = None
+    alt_tags: list | None = None
 
 
 class ProductRecommendation(ProductCard):

@@ -421,6 +421,26 @@ export interface AgentTask {
   created_at: string
 }
 
+export interface ProductDetail {
+  id: number
+  title: string
+  source_platform: string
+  source_url: string | null
+  main_image: string | null
+  price: number | null
+  category: string | null
+  description: string | null
+  seo_title: string | null
+  meta_description: string | null
+  alt_tags: string[] | null
+  images: unknown[] | null
+  variants: unknown[] | null
+  review_score: number | null
+  review_count: number | null
+  ai_score: number | null
+  is_saved: boolean
+}
+
 export const agentApi = {
   generateCopy: (product_id: number, language = "en", model?: string) =>
     request<ApiResponse<CopywritingResult>>("/agent/copywriting", {
