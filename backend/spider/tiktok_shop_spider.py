@@ -12,8 +12,40 @@ import re
 import time
 import random
 import json
+import hashlib
+import os
+import requests
 import pymysql
 from pymysql.cursors import DictCursor
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "../static/uploads/tiktok")
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+DOWNLOAD_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
+    "Referer": "https://www.tiktok.com/",
+}
+
+
+def download_cover(url: str) -> str:
+    """下载 TikTok 封面图到本地，返回本地路径。失败返回原 URL。"""
+    if not url or not url.startswith("http"):
+        return url
+    filename = hashlib.md5(url.encode()).hexdigest() + ".jpg"
+    local_path = os.path.join(STATIC_DIR, filename)
+    url_path = f"/static/uploads/tiktok/{filename}"
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+        return url_path
+    try:
+        resp = requests.get(url, headers=DOWNLOAD_HEADERS, timeout=15, stream=True)
+        if resp.status_code == 200:
+            with open(local_path, "wb") as f:
+                for chunk in resp.iter_content(8192):
+                    f.write(chunk)
+            return url_path
+    except Exception:
+        pass
+    return ""  # 下载失败返回空，让 INSERT IGNORE 跳过无图商品
 
 DB = dict(host="52.8.149.180", port=3306, user="znxp",
           password="ZRiACK48n2h7WJtJ", db="znxp", charset="utf8mb4",
@@ -139,13 +171,17 @@ def scrape_tag(tag: str, conn) -> int:
             desc = v.get("desc", "") or ""
             author = (v.get("author") or {}).get("nickname", "")
 
-            # 获取视频封面作为商品图片
+            # 获取视频封面作为商品图片，并立即下载到本地
             video_info = v.get("video", {}) or {}
-            cover = (video_info.get("cover") or
-                     video_info.get("originCover") or
-                     video_info.get("dynamicCover") or "")
+            cover_url = (video_info.get("originCover") or
+                         video_info.get("cover") or
+                         video_info.get("dynamicCover") or "")
 
-            if not cover or not desc:
+            if not cover_url or not desc:
+                continue
+
+            cover = download_cover(cover_url)
+            if not cover:
                 continue
 
             # 过滤播放量极低的（< 10K）
