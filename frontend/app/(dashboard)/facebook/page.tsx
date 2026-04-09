@@ -171,6 +171,7 @@ export default function FacebookPage() {
   }
 
   const startSync = async () => {
+    if (!window.confirm("确认要批量下载所有广告图片/视频到服务器本地吗？文件较多时可能需要较长时间。")) return
     setSyncRunning(true)
     setSyncResult(null)
     await request("/facebook/ads/sync-media", { method: "POST" })
