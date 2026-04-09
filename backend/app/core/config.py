@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "change-me"
-    access_token_expire_minutes: int = 240
+    access_token_expire_minutes: int = 43200  # 30 天
     allowed_origins: list[str] = ["http://localhost:3000"]
 
     # Database

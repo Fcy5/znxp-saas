@@ -26,6 +26,10 @@ export async function request<T>(path: string, options: RequestInit & { silent?:
   const json = await res.json()
   if (!res.ok) {
     if (res.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token")
+        window.location.href = "/login"
+      }
       throw new Error("401")
     }
     throw new Error(json.detail || json.message || "Request failed")
