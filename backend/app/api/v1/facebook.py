@@ -27,19 +27,30 @@ _sync_status = {"running": False, "last_result": None, "last_run_at": None}
 _scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
 _scheduler.start()
 
-# 默认爬取 URL（可通过接口修改）
+# 默认爬取配置（可通过接口修改）
 _schedule_config = {
     "enabled": False,
     "cron": "0 6 * * *",   # 默认每天早 6 点
-    "url": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=embroidery&search_type=keyword_unordered",
+    "keyword": "embroidery",
     "max_scrolls": 20,
     "job_id": "fb_spider_cron",
 }
 
+FB_ADS_URL_TEMPLATE = (
+    "https://www.facebook.com/ads/library/?active_status=active&ad_type=all"
+    "&country=US&is_targeted_country=false&media_type=all"
+    "&q={}&search_type=keyword_unordered"
+)
+
+
+def _keyword_to_url(keyword: str) -> str:
+    from urllib.parse import quote
+    return FB_ADS_URL_TEMPLATE.format(quote(keyword.strip()))
+
 
 # ── Schema ──
 class SpiderRequest(BaseModel):
-    url: str
+    keyword: str
     max_scrolls: int = 20
     headless: bool = True
 
@@ -47,7 +58,7 @@ class SpiderRequest(BaseModel):
 class ScheduleConfig(BaseModel):
     enabled: bool
     cron: str          # standard 5-field cron, e.g. "0 6 * * *"
-    url: str
+    keyword: str
     max_scrolls: int = 20
 
 
@@ -78,9 +89,10 @@ def _schedule_job():
     if _spider_status["running"]:
         logger.info("上次爬虫还未结束，跳过本次调度")
         return
+    url = _keyword_to_url(_schedule_config["keyword"])
     t = threading.Thread(
         target=_run_spider_thread,
-        args=(_schedule_config["url"], _schedule_config["max_scrolls"], True),
+        args=(url, _schedule_config["max_scrolls"], True),
         daemon=True,
     )
     t.start()
@@ -124,7 +136,7 @@ async def run_spider_api(body: SpiderRequest, current_user_id: CurrentUser):
         return Response(code=400, message="爬虫正在运行中，请等待完成")
     t = threading.Thread(
         target=_run_spider_thread,
-        args=(body.url, body.max_scrolls, body.headless),
+        args=(_keyword_to_url(body.keyword), body.max_scrolls, body.headless),
         daemon=True,
     )
     t.start()
@@ -154,7 +166,7 @@ async def set_schedule(body: ScheduleConfig, current_user_id: CurrentUser):
     _schedule_config.update({
         "enabled": body.enabled,
         "cron": body.cron.strip(),
-        "url": body.url,
+        "keyword": body.keyword.strip(),
         "max_scrolls": body.max_scrolls,
     })
     _apply_schedule()

@@ -32,13 +32,11 @@ interface SpiderStatus {
   schedule: {
     enabled: boolean
     cron: string
-    url: string
+    keyword: string
     max_scrolls: number
     next_run: string | null
   }
 }
-
-const DEFAULT_URL = "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=embroidery&search_type=keyword_unordered"
 
 // 快捷 cron 预设
 const CRON_PRESETS = [
@@ -60,7 +58,7 @@ export default function FacebookPage() {
 
   // spider modal
   const [showSpider, setShowSpider] = useState(false)
-  const [spiderUrl, setSpiderUrl] = useState(DEFAULT_URL)
+  const [spiderKeyword, setSpiderKeyword] = useState("embroidery")
   const [maxScrolls, setMaxScrolls] = useState(20)
   const [running, setRunning] = useState(false)
   const [spiderResult, setSpiderResult] = useState<SpiderStatus["last_result"]>(null)
@@ -69,7 +67,7 @@ export default function FacebookPage() {
   // schedule form
   const [schedEnabled, setSchedEnabled] = useState(false)
   const [schedCron, setSchedCron] = useState("0 6 * * *")
-  const [schedUrl, setSchedUrl] = useState(DEFAULT_URL)
+  const [schedKeyword, setSchedKeyword] = useState("embroidery")
   const [schedScrolls, setSchedScrolls] = useState(20)
   const [schedSaving, setSchedSaving] = useState(false)
   const [schedMsg, setSchedMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -112,7 +110,7 @@ export default function FacebookPage() {
     if (s.schedule) {
       setSchedEnabled(s.schedule.enabled)
       setSchedCron(s.schedule.cron)
-      setSchedUrl(s.schedule.url)
+      if (s.schedule.keyword) setSchedKeyword(s.schedule.keyword)
       setSchedScrolls(s.schedule.max_scrolls)
     }
     return s
@@ -133,7 +131,7 @@ export default function FacebookPage() {
     setSpiderResult(null)
     await request("/facebook/spider/run", {
       method: "POST",
-      body: JSON.stringify({ url: spiderUrl, max_scrolls: maxScrolls, headless: true }),
+      body: JSON.stringify({ keyword: spiderKeyword, max_scrolls: maxScrolls, headless: true }),
     })
     pollRef.current = setInterval(checkStatus, 5000)
   }
@@ -144,7 +142,7 @@ export default function FacebookPage() {
     try {
       await request("/facebook/spider/schedule", {
         method: "POST",
-        body: JSON.stringify({ enabled: schedEnabled, cron: schedCron, url: schedUrl, max_scrolls: schedScrolls }),
+        body: JSON.stringify({ enabled: schedEnabled, cron: schedCron, keyword: schedKeyword, max_scrolls: schedScrolls }),
       })
       await fetchStatus()
       setSchedMsg({ ok: true, text: schedEnabled ? `已开启，下次执行: ${status?.schedule?.next_run?.slice(0, 19) ?? "计算中..."}` : "已关闭定时任务" })
@@ -377,10 +375,10 @@ export default function FacebookPage() {
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">手动运行</p>
                 <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Facebook Ads Library URL</label>
-                  <Input value={spiderUrl} onChange={e => setSpiderUrl(e.target.value)}
-                    disabled={running} className="text-xs font-mono" />
-                  <p className="text-[10px] text-muted-foreground">在 FB 广告库搜索后复制地址栏 URL</p>
+                  <label className="text-xs text-muted-foreground">搜索关键词</label>
+                  <Input value={spiderKeyword} onChange={e => setSpiderKeyword(e.target.value)}
+                    disabled={running} className="text-xs" placeholder="e.g. embroidery" />
+                  <p className="text-[10px] text-muted-foreground">输入关键词，系统自动构造 FB 广告库搜索链接</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">滚动次数（越多数据越多，速度越慢）</label>
@@ -402,7 +400,7 @@ export default function FacebookPage() {
                   </div>
                 )}
 
-                <Button className="w-full gap-2" onClick={startSpider} disabled={running || !spiderUrl}>
+                <Button className="w-full gap-2" onClick={startSpider} disabled={running || !spiderKeyword}>
                   {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                   {running ? "运行中..." : "立即运行"}
                 </Button>
@@ -440,9 +438,9 @@ export default function FacebookPage() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs text-muted-foreground">爬取 URL</label>
-                      <Input value={schedUrl} onChange={e => setSchedUrl(e.target.value)}
-                        className="text-xs font-mono" />
+                      <label className="text-xs text-muted-foreground">搜索关键词</label>
+                      <Input value={schedKeyword} onChange={e => setSchedKeyword(e.target.value)}
+                        className="text-xs" placeholder="e.g. embroidery" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs text-muted-foreground">滚动次数</label>
