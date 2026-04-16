@@ -24,11 +24,14 @@ const platformColor: Record<string, "warning" | "info" | "danger" | "default"> =
 
 function EggRow({ rec, rank }: { rec: ProductRecommendation; rank: number }) {
   const rankIcon = ["🥇", "🥈", "🥉"][rank] ?? "✨"
+  const isXhs = rec.source_platform === "xiaohongshu"
+  const href = isXhs ? "/xiaohongshu" : `/products/${rec.id}`
+
   return (
-    <Link href={`/products/${rec.id}`}>
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors cursor-pointer">
+    <Link href={href}>
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border bg-card hover:bg-accent/30 transition-colors cursor-pointer ${isXhs ? "border-rose-500/20" : "border-border"}`}>
         <span className="text-lg shrink-0">{rankIcon}</span>
-        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary">
+        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary relative">
           {rec.main_image ? (
             <img
               src={rec.main_image.startsWith('/') ? `${STATIC_BASE}${rec.main_image}` : rec.main_image}
@@ -37,25 +40,38 @@ function EggRow({ rec, rank }: { rec: ProductRecommendation; rank: number }) {
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           ) : <div className="w-full h-full flex items-center justify-center text-lg">🛍️</div>}
+          {isXhs && (
+            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-rose-500 rounded-tl-md flex items-center justify-center">
+              <span className="text-[7px] text-white font-bold">红</span>
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground truncate">{rec.title}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <Badge variant={platformColor[rec.source_platform] ?? "outline"} className="text-[10px]">{rec.source_platform}</Badge>
+            <Badge variant={isXhs ? "danger" : (platformColor[rec.source_platform] ?? "outline")} className="text-[10px]">
+              {isXhs ? "小红书" : rec.source_platform}
+            </Badge>
             <span className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
               <Zap className="w-2.5 h-2.5 text-amber-400" />{rec.rec_reason.split(" · ")[0]}
             </span>
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-foreground">${rec.price?.toFixed(2) ?? "--"}</p>
-          {rec.profit_margin_estimate && (
-            <p className="text-xs text-emerald-400">{rec.profit_margin_estimate.toFixed(0)}% 利润</p>
+          {isXhs ? (
+            <p className="text-xs text-rose-400">❤ {(rec.review_count ?? 0).toLocaleString()} 赞</p>
+          ) : (
+            <>
+              <p className="text-sm font-bold text-foreground">${rec.price?.toFixed(2) ?? "--"}</p>
+              {rec.profit_margin_estimate && (
+                <p className="text-xs text-emerald-400">{rec.profit_margin_estimate.toFixed(0)}% 利润</p>
+              )}
+            </>
           )}
         </div>
-        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center shrink-0">
-          <span className="text-xs font-bold text-primary">{(rec.rec_score * 100).toFixed(0)}</span>
-          <span className="text-[9px] text-muted-foreground">AI</span>
+        <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 ${isXhs ? "bg-rose-500/10 border border-rose-500/20" : "bg-primary/10 border border-primary/20"}`}>
+          <span className={`text-xs font-bold ${isXhs ? "text-rose-400" : "text-primary"}`}>{(rec.rec_score * 100).toFixed(0)}</span>
+          <span className="text-[9px] text-muted-foreground">{isXhs ? "热" : "AI"}</span>
         </div>
       </div>
     </Link>

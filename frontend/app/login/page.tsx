@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -7,12 +7,23 @@ import { Button } from "@/components/ui/button"
 import { Loader2, AlertCircle, Sparkles } from "lucide-react"
 import { authApi } from "@/lib/api"
 
+const SAVED_EMAIL_KEY = "saved_login_email"
+const SAVED_PWD_KEY = "saved_login_pwd"
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [remember, setRemember] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(SAVED_EMAIL_KEY) || ""
+    const savedPwd = localStorage.getItem(SAVED_PWD_KEY) || ""
+    if (savedEmail) { setEmail(savedEmail); setRemember(true) }
+    if (savedPwd) setPassword(savedPwd)
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,6 +35,13 @@ export default function LoginPage() {
         localStorage.setItem("access_token", res.data.access_token)
         localStorage.setItem("user_id", String(res.data.user_id))
         localStorage.setItem("username", res.data.username)
+        if (remember) {
+          localStorage.setItem(SAVED_EMAIL_KEY, email)
+          localStorage.setItem(SAVED_PWD_KEY, password)
+        } else {
+          localStorage.removeItem(SAVED_EMAIL_KEY)
+          localStorage.removeItem(SAVED_PWD_KEY)
+        }
         router.push("/dashboard")
       }
     } catch (err: unknown) {
@@ -72,6 +90,19 @@ export default function LoginPage() {
                   onChange={e => setPassword(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  id="remember"
+                  type="checkbox"
+                  checked={remember}
+                  onChange={e => setRemember(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                />
+                <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer select-none">
+                  记住账号密码
+                </label>
               </div>
 
               {error && (

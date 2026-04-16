@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, ShoppingBag, Bot, Store, Settings,
-  Zap, ChevronRight, LogOut, Truck, MonitorPlay, Bookmark, Rocket,
+  Zap, ChevronRight, LogOut, Truck, MonitorPlay, Bookmark, Rocket, Flower2,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/published", icon: Rocket, label: "上架历史" },
   { href: "/agent", icon: Bot, label: "AI Agent", badge: "2" },
   { href: "/facebook", icon: MonitorPlay, label: "FB 广告库" },
+  { href: "/xiaohongshu", icon: Flower2, label: "小红书选品", badge: "NEW" },
   { href: "/suppliers", icon: Truck, label: "供应商" },
   { href: "/shops", icon: Store, label: "我的店铺" },
   { href: "/settings", icon: Settings, label: "设置" },
@@ -26,6 +27,7 @@ const dataSources = [
   { label: "TikTok 热榜", color: "bg-red-400", live: false },
   { label: "Facebook Ads", color: "bg-blue-400", live: false },
   { label: "Google Merchant", color: "bg-emerald-400", live: false },
+  { label: "小红书", color: "bg-rose-400", live: false },
 ]
 
 export function Sidebar() {

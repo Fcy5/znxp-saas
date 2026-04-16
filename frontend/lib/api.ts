@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ||
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ||
   (typeof window !== "undefined"
     ? `${window.location.protocol}//${window.location.host}/api/v1`
     : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"))
