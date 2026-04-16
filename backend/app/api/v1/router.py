@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, users, dashboard, products, shops, agent, suppliers, roles, publish, upload, facebook, scheduler_api, settings_api
+from app.api.v1 import auth, users, dashboard, products, shops, agent, suppliers, roles, publish, upload, facebook, scheduler_api, settings_api, xiaohongshu
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -16,3 +16,4 @@ api_router.include_router(upload.router)
 api_router.include_router(facebook.router)
 api_router.include_router(scheduler_api.router)
 api_router.include_router(settings_api.router)
+api_router.include_router(xiaohongshu.router)
