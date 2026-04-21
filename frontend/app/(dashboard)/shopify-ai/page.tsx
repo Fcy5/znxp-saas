@@ -26,6 +26,7 @@ interface SeoProduct {
   new_seo_title: string
   new_meta_desc: string
   new_alt_text: string
+  structured_data?: object
   error?: string
 }
 
@@ -374,7 +375,7 @@ export default function ShopifyAIPage() {
             style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}
           >
             <div
-              className="grid grid-cols-[40px_56px_1fr_1fr_1fr] gap-4 px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide border-b"
+              className="grid grid-cols-[40px_56px_1fr_1fr_1fr_60px] gap-4 px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide border-b"
               style={{ borderColor: "var(--color-border)" }}
             >
               <div className="flex items-center justify-center">
@@ -390,12 +391,13 @@ export default function ShopifyAIPage() {
               <div>商品名</div>
               <div>新 SEO 标题</div>
               <div>新 Meta 描述</div>
+              <div>Schema</div>
             </div>
             {seoProducts.map(p => (
               <div
                 key={p.shopify_product_id}
                 onClick={() => step === "previewing" && toggleOne(p.shopify_product_id)}
-                className="grid grid-cols-[40px_56px_1fr_1fr_1fr] gap-4 px-4 py-3 border-b transition-colors hover:bg-white/5"
+                className="grid grid-cols-[40px_56px_1fr_1fr_1fr_60px] gap-4 px-4 py-3 border-b transition-colors hover:bg-white/5"
                 style={{
                   borderColor: "var(--color-border)",
                   cursor: step === "previewing" ? "pointer" : "default",
@@ -425,6 +427,12 @@ export default function ShopifyAIPage() {
                 </div>
                 <div className="flex items-start py-1">
                   <p className="text-xs text-blue-300 line-clamp-3">{p.new_meta_desc}</p>
+                </div>
+                <div className="flex items-center">
+                  {p.structured_data
+                    ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400 font-medium">✓ JSON-LD</span>
+                    : <span className="text-[10px] text-slate-600">—</span>
+                  }
                 </div>
               </div>
             ))}

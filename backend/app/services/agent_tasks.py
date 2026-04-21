@@ -568,7 +568,7 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT domain, access_token, name FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                    "SELECT domain, access_token, name, niche, profile_summary, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
                     (shop_id, user_id)
                 )
                 shop = cur.fetchone()
@@ -584,6 +584,10 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
 
         domain = shop["domain"]
         token = shop["access_token"]
+        shop_name = shop.get("name") or domain
+        niche = shop.get("niche") or "custom embroidery gifts"
+        target_audience = shop.get("target_audience") or "US buyers looking for personalized gifts"
+        brand_style = (shop.get("profile_summary") or "")[:600]
 
         import asyncio
         from app.utils.shopify import list_products as _list_products
@@ -614,23 +618,51 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
 
             pid = product["id"]
             title = product.get("title") or ""
+            body_html = (product.get("body_html") or "")[:300]
+            product_type = product.get("product_type") or ""
+            tags = ", ".join((product.get("tags") or "").split(",")[:8])
+            variants = product.get("variants") or []
+            price = variants[0].get("price", "") if variants else ""
             images = product.get("images") or []
             first_img = images[0] if images else {}
             img_url = first_img.get("src", "")
 
-            prompt = f"""You are an expert Shopify SEO specialist.
-Optimize SEO for this product. Return JSON only.
+            prompt = f"""You are a senior Shopify SEO specialist for the store "{shop_name}".
 
-Product title: {title}
+Store context:
+- Niche: {niche}
+- Target audience: {target_audience}
+- Brand style notes: {brand_style or "warm, trustworthy, gift-oriented"}
 
-Return:
+Product details:
+- Title: {title}
+- Type: {product_type}
+- Tags: {tags}
+- Price: ${price}
+- Description snippet: {body_html}
+
+Your task: Generate SEO-optimized content that reflects current Google search trends for this product category and maintains the store's brand voice.
+
+Return ONLY valid JSON with these exact keys:
 {{
-  "seo_title": "SEO title under 70 chars, include primary keyword",
-  "meta_description": "Meta description under 155 chars, compelling with CTA",
-  "alt_text": "Main image alt text under 125 chars, descriptive"
-}}
-
-Rules: target US buyers, natural keywords, no keyword stuffing. Return ONLY valid JSON."""
+  "seo_title": "SEO title 50-70 chars, lead with primary keyword, reflect current search intent",
+  "meta_description": "Meta description 140-155 chars, compelling CTA, emotional hook for gift buyers",
+  "alt_text": "Main image alt text under 125 chars, descriptive and keyword-rich",
+  "structured_data": {{
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": "<product name>",
+    "description": "<1-2 sentence product description>",
+    "brand": {{"@type": "Brand", "name": "{shop_name}"}},
+    "offers": {{
+      "@type": "Offer",
+      "priceCurrency": "USD",
+      "price": "{price}",
+      "availability": "https://schema.org/InStock",
+      "seller": {{"@type": "Organization", "name": "{shop_name}"}}
+    }}
+  }}
+}}"""
 
             messages = [{"role": "user", "content": prompt}]
             if img_url:
@@ -652,6 +684,11 @@ Rules: target US buyers, natural keywords, no keyword stuffing. Return ONLY vali
                         raw = raw[4:]
                 data = json.loads(raw.strip())
 
+                # structured_data 补充图片字段
+                schema = data.get("structured_data") or {}
+                if img_url and schema:
+                    schema["image"] = img_url
+
                 results.append({
                     "shopify_product_id": pid,
                     "title": title,
@@ -662,6 +699,7 @@ Rules: target US buyers, natural keywords, no keyword stuffing. Return ONLY vali
                     "new_seo_title": data.get("seo_title", "")[:70],
                     "new_meta_desc": data.get("meta_description", "")[:155],
                     "new_alt_text": data.get("alt_text", "")[:125],
+                    "structured_data": schema,
                 })
             except Exception as e:
                 results.append({

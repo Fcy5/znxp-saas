@@ -500,6 +500,7 @@ async def apply_shopify_seo(
                 p["shopify_product_id"],
                 p["new_seo_title"], p["new_meta_desc"],
                 image_alts or None,
+                p.get("structured_data") or None,
             )
             success += 1
         except Exception as e:

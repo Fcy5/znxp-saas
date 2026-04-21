@@ -142,6 +142,7 @@ async def update_product_seo(
     seo_title: str,
     meta_description: str,
     image_alts: list[dict] | None = None,  # [{"id": 123, "alt": "..."}]
+    structured_data: dict | None = None,   # Product Schema JSON-LD
 ) -> dict:
     """Update product SEO title, meta description, and image alt texts."""
     mutation = """
@@ -163,9 +164,9 @@ async def update_product_seo(
     if errors:
         raise ValueError(f"Shopify SEO update error: {errors}")
 
-    # Update image alt texts via REST
-    if image_alts:
-        async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=15) as client:
+        # Update image alt texts
+        if image_alts:
             for img in image_alts:
                 img_url = f"https://{shop_domain}/admin/api/{API_VERSION}/products/{product_id}/images/{img['id']}.json"
                 await client.put(
@@ -173,6 +174,22 @@ async def update_product_seo(
                     json={"image": {"id": img["id"], "alt": img["alt"][:255]}},
                     headers=_headers(access_token),
                 )
+
+        # Write Product Schema JSON-LD as metafield
+        if structured_data:
+            import json as _json
+            mf_url = f"https://{shop_domain}/admin/api/{API_VERSION}/products/{product_id}/metafields.json"
+            await client.post(
+                mf_url,
+                json={"metafield": {
+                    "namespace": "custom",
+                    "key": "structured_data",
+                    "value": _json.dumps(structured_data, ensure_ascii=False),
+                    "type": "json",
+                }},
+                headers=_headers(access_token),
+            )
+
     return result
 
 
