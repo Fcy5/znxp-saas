@@ -139,6 +139,52 @@ def _rec_reason(p: Product, maxes: dict) -> str:
     return "；".join(parts) + "。"
 
 
+async def _get_xhs_recommendations(db: DBSession, limit: int = 4) -> list[ProductRecommendation]:
+    """从 xhs_products_table 取点赞最高的商品，映射成 ProductRecommendation"""
+    from sqlalchemy import text
+    try:
+        rows = (await db.execute(
+            text("""SELECT id, title, images, author_name, likes_count, xhs_url
+                    FROM xhs_products_table
+                    WHERE is_delete = 0 AND images != '[]' AND images IS NOT NULL AND images != ''
+                    ORDER BY likes_count DESC
+                    LIMIT :limit"""),
+            {"limit": limit},
+        )).mappings().all()
+    except Exception:
+        return []
+
+    import json as _json
+    recs = []
+    for r in rows:
+        imgs = []
+        try:
+            imgs = _json.loads(r["images"]) if r["images"] else []
+        except Exception:
+            pass
+        main_img = imgs[0] if imgs else None
+        likes = r["likes_count"] or 0
+        recs.append(ProductRecommendation(
+            id=-(r["id"]),          # 负数 ID 标记为 XHS 商品
+            title=r["title"] or "",
+            source_platform="xiaohongshu",
+            source_url=r["xhs_url"] or None,
+            main_image=main_img,
+            price=None,
+            sales_trend=None,
+            review_score=None,
+            tiktok_views=None,
+            facebook_ad_count=None,
+            ai_score=None,
+            profit_margin_estimate=None,
+            category="Custom Embroidery",
+            review_count=likes,      # 借用 review_count 字段存点赞数
+            rec_score=min(likes / 10000, 1.0),
+            rec_reason=f"小红书 {likes:,} 点赞 · 定制刺绣热门",
+        ))
+    return recs
+
+
 @router.get("/recommendations", response_model=Response[list[ProductRecommendation]])
 async def get_recommendations(db: DBSession, limit: int = Query(5, le=20)):
     # 各维度最大值（用于归一化）
@@ -222,7 +268,13 @@ async def get_recommendations(db: DBSession, limit: int = Query(5, le=20)):
         )
         recs.append(rec)
 
-    return Response(data=recs)
+    # 混入小红书热品（取 3 条，插在第 2、5、8 位，分散不扎堆）
+    xhs_recs = await _get_xhs_recommendations(db, limit=3)
+    for i, xrec in enumerate(xhs_recs):
+        insert_pos = min(1 + i * 3, len(recs))
+        recs.insert(insert_pos, xrec)
+
+    return Response(data=recs[:limit + 3])
 
 
 @router.post("/search", response_model=PagedResponse[ProductCard])
