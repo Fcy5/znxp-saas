@@ -115,7 +115,7 @@ async def _update_variant_price(shop_domain: str, access_token: str, variant_id:
 async def list_products(shop_domain: str, access_token: str, limit: int = 250) -> list[dict]:
     """Fetch all products from Shopify via REST, return list of product dicts."""
     url = f"https://{shop_domain}/admin/api/{API_VERSION}/products.json"
-    params = {"limit": min(limit, 250), "fields": "id,title,images,variants,status"}
+    params = {"limit": min(limit, 250), "fields": "id,title,images,variants,status,product_type,tags,published_at,created_at"}
     products = []
     async with httpx.AsyncClient(timeout=30) as client:
         while url:

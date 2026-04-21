@@ -402,17 +402,19 @@ async def trigger_publish(
     return Response(data=_task_resp(task), message="上架任务已创建")
 
 
-# ── shopify 商品列表（无 AI，纯拉取）────────────────────────────────────────────
+# ── shopify 商品缓存：同步 + 读取 ────────────────────────────────────────────────
 
-@router.get("/shopify-products", response_model=Response[list])
-async def list_shopify_products(
+@router.post("/shopify-sync", response_model=Response[dict])
+async def sync_shopify_products(
     shop_id: int,
     current_user_id: CurrentUser,
     db: DBSession,
 ):
-    """从 Shopify 拉取商品列表（不调 AI），供用户勾选后再优化"""
+    """从 Shopify 拉取商品并写入本地缓存（upsert）"""
     from app.models.shop import Shop as ShopModel
     from app.utils.shopify import list_products
+    from sqlalchemy import text
+    from datetime import datetime
 
     shop = (await db.execute(
         select(ShopModel).where(ShopModel.id == shop_id, ShopModel.user_id == current_user_id, ShopModel.is_deleted == False)
@@ -427,16 +429,131 @@ async def list_shopify_products(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Shopify 请求失败: {e}")
 
-    result = []
+    now = datetime.utcnow()
+
+    def _parse_dt(s):
+        if not s:
+            return None
+        try:
+            return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            return None
+
+    upsert_sql = text("""
+        INSERT INTO shopify_products_cache
+            (shop_id, shopify_product_id, title, image_url, status,
+             product_type, tags, price, published_at, shopify_created_at, synced_at)
+        VALUES
+            (:shop_id, :shopify_product_id, :title, :image_url, :status,
+             :product_type, :tags, :price, :published_at, :shopify_created_at, :synced_at)
+        ON DUPLICATE KEY UPDATE
+            title=VALUES(title), image_url=VALUES(image_url), status=VALUES(status),
+            product_type=VALUES(product_type), tags=VALUES(tags), price=VALUES(price),
+            published_at=VALUES(published_at), synced_at=VALUES(synced_at)
+    """)
+
     for p in products:
         images = p.get("images") or []
-        result.append({
+        variants = p.get("variants") or []
+        await db.execute(upsert_sql, {
+            "shop_id": shop_id,
             "shopify_product_id": p["id"],
-            "title": p.get("title") or "",
-            "image_url": images[0].get("src", "") if images else "",
-            "status": p.get("status", "active"),
+            "title": (p.get("title") or "")[:512],
+            "image_url": (images[0].get("src", "") if images else "")[:1024],
+            "status": (p.get("status") or "active")[:32],
+            "product_type": (p.get("product_type") or "")[:255],
+            "tags": (p.get("tags") or "")[:1024],
+            "price": (variants[0].get("price", "") if variants else "")[:32],
+            "published_at": _parse_dt(p.get("published_at")),
+            "shopify_created_at": _parse_dt(p.get("created_at")),
+            "synced_at": now,
         })
-    return Response(data=result)
+
+    await db.commit()
+    return Response(data={"synced": len(products), "synced_at": now.isoformat()}, message=f"已同步 {len(products)} 件商品")
+
+
+@router.get("/shopify-products", response_model=Response[dict])
+async def list_shopify_products_cached(
+    shop_id: int,
+    current_user_id: CurrentUser,
+    db: DBSession,
+    q: str = "",
+    status: str = "",
+    sort: str = "published_at",   # published_at | shopify_created_at | title
+    page: int = 1,
+    per_page: int = 20,
+):
+    """从本地缓存读取 Shopify 商品列表，支持搜索、筛选、分页"""
+    from app.models.shop import Shop as ShopModel
+    from sqlalchemy import text
+
+    shop = (await db.execute(
+        select(ShopModel).where(ShopModel.id == shop_id, ShopModel.user_id == current_user_id, ShopModel.is_deleted == False)
+    )).scalar_one_or_none()
+    if not shop:
+        raise HTTPException(status_code=404, detail="店铺不存在")
+
+    where_parts = ["shop_id = :shop_id"]
+    params: dict = {"shop_id": shop_id}
+
+    if q:
+        where_parts.append("title LIKE :q")
+        params["q"] = f"%{q}%"
+    if status:
+        where_parts.append("status = :status")
+        params["status"] = status
+
+    where_clause = " AND ".join(where_parts)
+    sort_col = sort if sort in ("published_at", "shopify_created_at", "title") else "published_at"
+
+    count_row = (await db.execute(
+        text(f"SELECT COUNT(*) as cnt FROM shopify_products_cache WHERE {where_clause}"),
+        params
+    )).mappings().one()
+    total = count_row["cnt"]
+
+    offset = (page - 1) * per_page
+    rows = (await db.execute(
+        text(f"""
+            SELECT shopify_product_id, title, image_url, status,
+                   product_type, tags, price,
+                   published_at, shopify_created_at, synced_at
+            FROM shopify_products_cache
+            WHERE {where_clause}
+            ORDER BY {sort_col} DESC
+            LIMIT :limit OFFSET :offset
+        """),
+        {**params, "limit": per_page, "offset": offset}
+    )).mappings().all()
+
+    # 取最近同步时间
+    sync_row = (await db.execute(
+        text("SELECT MAX(synced_at) as last_sync FROM shopify_products_cache WHERE shop_id=:shop_id"),
+        {"shop_id": shop_id}
+    )).mappings().one()
+
+    products = []
+    for r in rows:
+        products.append({
+            "shopify_product_id": r["shopify_product_id"],
+            "title": r["title"],
+            "image_url": r["image_url"] or "",
+            "status": r["status"] or "active",
+            "product_type": r["product_type"] or "",
+            "tags": r["tags"] or "",
+            "price": r["price"] or "",
+            "published_at": r["published_at"].isoformat() if r["published_at"] else None,
+            "shopify_created_at": r["shopify_created_at"].isoformat() if r["shopify_created_at"] else None,
+        })
+
+    return Response(data={
+        "products": products,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "last_synced_at": sync_row["last_sync"].isoformat() if sync_row["last_sync"] else None,
+    })
 
 
 # ── shopify_seo_optimize ──────────────────────────────────────────────────────

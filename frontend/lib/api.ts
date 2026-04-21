@@ -492,10 +492,16 @@ export const agentApi = {
       body: JSON.stringify({ product_ids, shop_id: shop_id ?? null }),
     }),
 
-  listShopifyProducts: (shop_id: number) =>
-    request<ApiResponse<{ shopify_product_id: number; title: string; image_url: string; status: string }[]>>(
-      `/agent/shopify-products?shop_id=${shop_id}`
-    ),
+  syncShopifyProducts: (shop_id: number) =>
+    request<ApiResponse<{ synced: number; synced_at: string }>>(`/agent/shopify-sync?shop_id=${shop_id}`, { method: "POST" }),
+
+  listShopifyProducts: (shop_id: number, params?: { q?: string; status?: string; sort?: string; page?: number; per_page?: number }) => {
+    const qs = new URLSearchParams({ shop_id: String(shop_id), ...(params as Record<string, string> || {}) }).toString()
+    return request<ApiResponse<{
+      products: { shopify_product_id: number; title: string; image_url: string; status: string; product_type: string; tags: string; price: string; published_at: string | null; shopify_created_at: string | null }[]
+      total: number; page: number; per_page: number; last_synced_at: string | null
+    }>>(`/agent/shopify-products?${qs}`)
+  },
 
   shopifySeoOptimize: (shop_id: number, product_ids?: number[]) =>
     request<ApiResponse<AgentTask>>("/agent/shopify-seo-optimize", {
