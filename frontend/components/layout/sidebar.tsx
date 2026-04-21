@@ -1,4 +1,5 @@
 "use client"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -34,7 +35,11 @@ const dataSources = [
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const username = typeof window !== "undefined" ? localStorage.getItem("username") || "User" : "User"
+  const [username, setUsername] = useState("User")
+
+  useEffect(() => {
+    setUsername(localStorage.getItem("username") || "User")
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem("access_token")
