@@ -11,6 +11,7 @@ from app.schemas.agent import (
     ImageProcessRequest, ImageGenerateRequest, ImageGenerateResult,
     SocialCopyRequest, SocialCopyResult,
     VideoGenerationRequest, PublishRequest,
+    ShopifySeoOptimizeRequest, ShopifySeoApplyRequest, ShopifySeoApplyResult,
     AgentTaskResponse,
 )
 from app.schemas.common import Response
@@ -399,6 +400,79 @@ async def trigger_publish(
                               shop_id=body.shop_id)
     await db.commit()
     return Response(data=_task_resp(task), message="上架任务已创建")
+
+
+# ── shopify_seo_optimize ──────────────────────────────────────────────────────
+
+@router.post("/shopify-seo-optimize", response_model=Response[AgentTaskResponse])
+async def trigger_shopify_seo_optimize(
+    body: ShopifySeoOptimizeRequest,
+    background_tasks: BackgroundTasks,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    """拉取 Shopify 商品 → AI 生成 SEO 预览（异步）"""
+    task = await _create_task(db, current_user_id, "shopify_seo_optimize",
+                              shop_id=body.shop_id,
+                              input_data={"shop_id": body.shop_id, "product_ids": body.product_ids})
+    await db.commit()
+
+    from app.services.agent_tasks import run_shopify_seo_optimize
+    background_tasks.add_task(run_shopify_seo_optimize, task.id, body.shop_id, current_user_id, body.product_ids)
+
+    return Response(data=_task_resp(task), message="SEO 优化分析已启动，请稍后查看预览")
+
+
+@router.post("/shopify-seo-apply", response_model=Response[ShopifySeoApplyResult])
+async def apply_shopify_seo(
+    body: ShopifySeoApplyRequest,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    """将用户确认的 SEO 方案写入 Shopify（同步）"""
+    from app.models.shop import Shop
+    from app.models.agent_task import AgentTask as AgentTaskModel
+    import json as _json
+
+    shop = (await db.execute(
+        select(Shop).where(Shop.id == body.shop_id, Shop.user_id == current_user_id, Shop.is_deleted == False)
+    )).scalar_one_or_none()
+    if not shop:
+        raise HTTPException(status_code=404, detail="店铺不存在")
+    if not shop.access_token:
+        raise HTTPException(status_code=400, detail="店铺未配置 Access Token")
+
+    task = await db.get(AgentTaskModel, body.task_id)
+    if not task or task.user_id != current_user_id:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    output = task.output_data or {}
+    products = output.get("products", [])
+    selected_set = set(body.selected_shopify_ids)
+    to_apply = [p for p in products if p.get("shopify_product_id") in selected_set and "error" not in p]
+
+    from app.utils.shopify import update_product_seo
+    success, failed, errors = 0, 0, []
+    for p in to_apply:
+        try:
+            image_alts = []
+            if p.get("images") and p.get("new_alt_text"):
+                image_alts = [{"id": p["images"][0]["id"], "alt": p["new_alt_text"]}]
+            await update_product_seo(
+                shop.domain, shop.access_token,
+                p["shopify_product_id"],
+                p["new_seo_title"], p["new_meta_desc"],
+                image_alts or None,
+            )
+            success += 1
+        except Exception as e:
+            failed += 1
+            errors.append(f"{p.get('title', p['shopify_product_id'])}: {e}")
+
+    return Response(
+        data=ShopifySeoApplyResult(total=len(to_apply), success=success, failed=failed, errors=errors),
+        message=f"已成功更新 {success} 件商品 SEO",
+    )
 
 
 # ── 任务查询 ──────────────────────────────────────────────────────────────────

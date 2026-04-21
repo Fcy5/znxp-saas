@@ -556,3 +556,130 @@ Rules: natural keywords, warm gift-oriented tone, Q&A for GEO/AI search, return 
 
     except Exception as e:
         _update_task(task_id, status="failed", error_message=str(e))
+
+
+# ── shopify_seo_optimize ──────────────────────────────────────────────────────
+
+def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_ids: list | None = None):
+    """拉取 Shopify 商品 → AI 生成 SEO → 存预览，不自动写入 Shopify"""
+    _update_task(task_id, status="running", progress=5)
+    try:
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT domain, access_token, name FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                    (shop_id, user_id)
+                )
+                shop = cur.fetchone()
+        finally:
+            conn.close()
+
+        if not shop:
+            _update_task(task_id, status="failed", error_message="店铺不存在或无权限")
+            return
+        if not shop.get("access_token"):
+            _update_task(task_id, status="failed", error_message="店铺未配置 Access Token")
+            return
+
+        domain = shop["domain"]
+        token = shop["access_token"]
+
+        import asyncio
+        from app.utils.shopify import list_products as _list_products
+        _update_task(task_id, progress=15)
+        all_products = asyncio.run(_list_products(domain, token, limit=250))
+
+        if product_ids:
+            pid_set = set(product_ids)
+            all_products = [p for p in all_products if p["id"] in pid_set]
+
+        if not all_products:
+            _update_task(task_id, status="failed", error_message="未找到商品，请检查店铺 Token 是否有效")
+            return
+
+        total = len(all_products)
+        _update_task(task_id, progress=20)
+
+        if not settings.ai_api_key:
+            _update_task(task_id, status="failed", error_message="AI API Key 未配置")
+            return
+
+        ai = _ai_client()
+        results = []
+
+        for i, product in enumerate(all_products):
+            progress = 20 + int((i / total) * 70)
+            _update_task(task_id, progress=progress)
+
+            pid = product["id"]
+            title = product.get("title") or ""
+            images = product.get("images") or []
+            first_img = images[0] if images else {}
+            img_url = first_img.get("src", "")
+
+            prompt = f"""You are an expert Shopify SEO specialist.
+Optimize SEO for this product. Return JSON only.
+
+Product title: {title}
+
+Return:
+{{
+  "seo_title": "SEO title under 70 chars, include primary keyword",
+  "meta_description": "Meta description under 155 chars, compelling with CTA",
+  "alt_text": "Main image alt text under 125 chars, descriptive"
+}}
+
+Rules: target US buyers, natural keywords, no keyword stuffing. Return ONLY valid JSON."""
+
+            messages = [{"role": "user", "content": prompt}]
+            if img_url:
+                messages = [{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": img_url}},
+                    {"type": "text", "text": prompt},
+                ]}]
+
+            try:
+                resp = ai.chat.completions.create(
+                    model=settings.ai_model,
+                    messages=messages,
+                    temperature=0.4,
+                )
+                raw = resp.choices[0].message.content.strip()
+                if raw.startswith("```"):
+                    raw = raw.split("```")[1]
+                    if raw.startswith("json"):
+                        raw = raw[4:]
+                data = json.loads(raw.strip())
+
+                results.append({
+                    "shopify_product_id": pid,
+                    "title": title,
+                    "image_url": img_url,
+                    "images": [{"id": img["id"], "alt": img.get("alt", "")} for img in images[:3]],
+                    "current_seo_title": "",
+                    "current_meta_desc": "",
+                    "new_seo_title": data.get("seo_title", "")[:70],
+                    "new_meta_desc": data.get("meta_description", "")[:155],
+                    "new_alt_text": data.get("alt_text", "")[:125],
+                })
+            except Exception as e:
+                results.append({
+                    "shopify_product_id": pid,
+                    "title": title,
+                    "image_url": img_url,
+                    "images": [],
+                    "error": str(e),
+                })
+
+        success_count = sum(1 for r in results if "error" not in r)
+        _update_task(task_id, status="success", progress=100, output_data={
+            "shop_id": shop_id,
+            "domain": domain,
+            "total": total,
+            "success": success_count,
+            "products": results,
+        })
+
+    except Exception as e:
+        _update_task(task_id, status="failed", error_message=str(e))

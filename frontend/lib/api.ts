@@ -491,4 +491,16 @@ export const agentApi = {
       method: "POST",
       body: JSON.stringify({ product_ids, shop_id: shop_id ?? null }),
     }),
+
+  shopifySeoOptimize: (shop_id: number, product_ids?: number[]) =>
+    request<ApiResponse<AgentTask>>("/agent/shopify-seo-optimize", {
+      method: "POST",
+      body: JSON.stringify({ shop_id, product_ids: product_ids ?? null }),
+    }),
+
+  shopifySeoApply: (shop_id: number, task_id: number, selected_shopify_ids: number[]) =>
+    request<ApiResponse<{ total: number; success: number; failed: number; errors: string[] }>>("/agent/shopify-seo-apply", {
+      method: "POST",
+      body: JSON.stringify({ shop_id, task_id, selected_shopify_ids }),
+    }),
 }

@@ -81,3 +81,21 @@ class PublishRequest(BaseModel):
     shop_id: int
     custom_price: float | None = None
     profit_margin: float | None = None  # 用利润率自动定价
+
+
+class ShopifySeoOptimizeRequest(BaseModel):
+    shop_id: int
+    product_ids: list[int] | None = None  # None = 全部商品
+
+
+class ShopifySeoApplyRequest(BaseModel):
+    shop_id: int
+    task_id: int
+    selected_shopify_ids: list[int]  # 用户勾选的 Shopify product ID 列表
+
+
+class ShopifySeoApplyResult(BaseModel):
+    total: int
+    success: int
+    failed: int
+    errors: list[str]

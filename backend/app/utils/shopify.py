@@ -112,6 +112,70 @@ async def _update_variant_price(shop_domain: str, access_token: str, variant_id:
         )
 
 
+async def list_products(shop_domain: str, access_token: str, limit: int = 250) -> list[dict]:
+    """Fetch all products from Shopify via REST, return list of product dicts."""
+    url = f"https://{shop_domain}/admin/api/{API_VERSION}/products.json"
+    params = {"limit": min(limit, 250), "fields": "id,title,images,variants,status"}
+    products = []
+    async with httpx.AsyncClient(timeout=30) as client:
+        while url:
+            resp = await client.get(url, headers=_headers(access_token), params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            products.extend(data.get("products", []))
+            # pagination via Link header
+            link = resp.headers.get("Link", "")
+            next_url = None
+            for part in link.split(","):
+                part = part.strip()
+                if 'rel="next"' in part:
+                    next_url = part.split(";")[0].strip().strip("<>")
+            url = next_url
+            params = {}  # page_info already in next_url
+    return products
+
+
+async def update_product_seo(
+    shop_domain: str,
+    access_token: str,
+    product_id: int,
+    seo_title: str,
+    meta_description: str,
+    image_alts: list[dict] | None = None,  # [{"id": 123, "alt": "..."}]
+) -> dict:
+    """Update product SEO title, meta description, and image alt texts."""
+    mutation = """
+    mutation productUpdate($input: ProductInput!) {
+      productUpdate(input: $input) {
+        product { id title seo { title description } }
+        userErrors { field message }
+      }
+    }
+    """
+    product_gid = f"gid://shopify/Product/{product_id}"
+    result = await graphql(shop_domain, access_token, mutation, {
+        "input": {
+            "id": product_gid,
+            "seo": {"title": seo_title[:70], "description": meta_description[:155]},
+        }
+    })
+    errors = result.get("data", {}).get("productUpdate", {}).get("userErrors", [])
+    if errors:
+        raise ValueError(f"Shopify SEO update error: {errors}")
+
+    # Update image alt texts via REST
+    if image_alts:
+        async with httpx.AsyncClient(timeout=15) as client:
+            for img in image_alts:
+                img_url = f"https://{shop_domain}/admin/api/{API_VERSION}/products/{product_id}/images/{img['id']}.json"
+                await client.put(
+                    img_url,
+                    json={"image": {"id": img["id"], "alt": img["alt"][:255]}},
+                    headers=_headers(access_token),
+                )
+    return result
+
+
 async def _publish_product(shop_domain: str, access_token: str, product_gid: str):
     """Publish product to online store channel."""
     mutation = """
