@@ -52,6 +52,107 @@ def job_shopify():
     _run("shopify_update.py", "--all", label="Shopify")
 
 
+def job_shopify_cache_sync():
+    """每日自动同步所有店铺商品到本地缓存（凌晨 03:00）"""
+    import asyncio
+    import pymysql
+    import pymysql.cursors
+    import re
+    from datetime import datetime
+
+    logger.info("[ShopifyCache] 开始同步所有店铺商品缓存")
+
+    try:
+        from app.core.config import settings
+        from app.utils.shopify import list_products
+
+        url = settings.database_url
+        m = re.match(r"mysql\+\w+://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(\w+)", url)
+        if not m:
+            logger.error("[ShopifyCache] 无法解析 DATABASE_URL")
+            return
+        db_user, db_pwd, db_host, db_port, db_name = m.groups()
+
+        def _db():
+            return pymysql.connect(
+                host=db_host, port=int(db_port or 3306),
+                user=db_user, password=db_pwd, db=db_name,
+                charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor,
+                autocommit=False,
+            )
+
+        # 取所有有 token 的店铺
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, domain, shopify_access_token FROM shops WHERE is_deleted=0 AND shopify_access_token IS NOT NULL AND shopify_access_token != ''"
+                )
+                shops = cur.fetchall()
+        finally:
+            conn.close()
+
+        if not shops:
+            logger.info("[ShopifyCache] 没有配置 Token 的店铺，跳过")
+            return
+
+        logger.info(f"[ShopifyCache] 共 {len(shops)} 个店铺待同步")
+
+        def _parse_dt(s):
+            if not s:
+                return None
+            try:
+                return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
+            except Exception:
+                return None
+
+        for shop in shops:
+            shop_id = shop["id"]
+            domain = shop["domain"]
+            token = shop["shopify_access_token"]
+            try:
+                products = asyncio.run(list_products(domain, token, limit=250))
+                now = datetime.utcnow()
+                conn = _db()
+                try:
+                    with conn.cursor() as cur:
+                        for p in products:
+                            images = p.get("images") or []
+                            variants = p.get("variants") or []
+                            cur.execute("""
+                                INSERT INTO shopify_products_cache
+                                    (shop_id, shopify_product_id, title, image_url, status,
+                                     product_type, tags, price, published_at, shopify_created_at, synced_at)
+                                VALUES
+                                    (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                ON DUPLICATE KEY UPDATE
+                                    title=VALUES(title), image_url=VALUES(image_url), status=VALUES(status),
+                                    product_type=VALUES(product_type), tags=VALUES(tags), price=VALUES(price),
+                                    published_at=VALUES(published_at), synced_at=VALUES(synced_at)
+                            """, (
+                                shop_id, p["id"],
+                                (p.get("title") or "")[:512],
+                                (images[0].get("src", "") if images else "")[:1024],
+                                (p.get("status") or "active")[:32],
+                                (p.get("product_type") or "")[:255],
+                                (p.get("tags") or "")[:1024],
+                                (variants[0].get("price", "") if variants else "")[:32],
+                                _parse_dt(p.get("published_at")),
+                                _parse_dt(p.get("created_at")),
+                                now,
+                            ))
+                    conn.commit()
+                finally:
+                    conn.close()
+                logger.info(f"[ShopifyCache] 店铺 {domain} 同步完成，{len(products)} 件商品")
+            except Exception as e:
+                logger.error(f"[ShopifyCache] 店铺 {domain} 同步失败: {e}")
+
+        logger.info("[ShopifyCache] 所有店铺同步完成")
+    except Exception as e:
+        logger.error(f"[ShopifyCache] 任务异常: {e}")
+
+
 def job_tiktok():
     """TikTok 话题商品爬取（所有话题）"""
     _run("tiktok_shop_spider.py", "--all", label="TikTok")
@@ -82,6 +183,9 @@ def start_scheduler():
 
     # TikTok：每天 02:00
     _scheduler.add_job(job_tiktok, CronTrigger(hour=2, minute=0), id="tiktok", name="TikTok每日爬取", replace_existing=True)
+
+    # Shopify 商品缓存：每天 03:00（错开爬虫任务，流量低谷）
+    _scheduler.add_job(job_shopify_cache_sync, CronTrigger(hour=3, minute=0), id="shopify_cache", name="Shopify商品缓存同步", replace_existing=True)
 
     # FB：每天 04:00（Playwright 较重，错开 TikTok）
     _scheduler.add_job(job_fb, CronTrigger(hour=4, minute=0), id="fb", name="FB广告每日爬取", replace_existing=True)
