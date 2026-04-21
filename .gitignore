@@ -39,6 +39,8 @@ backend/static/uploads/
 productSpider/__pycache__/
 productSpider/*.pyc
 productSpider/data/
+backend/spider/*_cookies.json
+*_cookies.json
 
 # Local dev only
 DEV.md
