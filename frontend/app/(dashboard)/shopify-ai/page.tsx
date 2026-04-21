@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { agentApi, shopApi, type Shop, type AgentTask } from "@/lib/api"
+import { Drawer } from "@/components/ui/drawer"
 import {
   Sparkles, Loader2, CheckCircle2, ChevronDown,
   Send, AlertCircle, RefreshCw, Zap, Search,
-  ChevronLeft, ChevronRight, Clock,
+  ChevronLeft, ChevronRight, Clock, Tag, Package, ExternalLink,
 } from "lucide-react"
 
 type PageStep = "idle" | "syncing" | "ready" | "optimizing" | "previewing" | "applying" | "done"
@@ -75,6 +76,7 @@ export default function ShopifyAIPage() {
   const [applyResult, setApplyResult] = useState<{ success: number; failed: number } | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [drawerProduct, setDrawerProduct] = useState<CachedProduct | null>(null)
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const PER_PAGE = 20
@@ -415,13 +417,14 @@ export default function ShopifyAIPage() {
               </div>
             ) : (
               products.map(p => (
-                <div key={p.shopify_product_id} onClick={() => toggleOne(p.shopify_product_id)}
+                <div key={p.shopify_product_id}
+                  onClick={() => setDrawerProduct(p)}
                   className="grid grid-cols-[40px_56px_1fr_90px_100px_90px] gap-3 px-4 py-3 border-b cursor-pointer transition-colors hover:bg-white/5"
                   style={{
                     borderColor: "var(--color-border)",
                     background: selectedIds.has(p.shopify_product_id) ? "rgba(59,130,246,0.06)" : undefined,
                   }}>
-                  <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-center" onClick={e => { e.stopPropagation(); toggleOne(p.shopify_product_id) }}>
                     <input type="checkbox" checked={selectedIds.has(p.shopify_product_id)}
                       onChange={() => toggleOne(p.shopify_product_id)}
                       className="w-4 h-4 accent-blue-500 cursor-pointer" />
@@ -531,6 +534,115 @@ export default function ShopifyAIPage() {
             ))}
           </div>
         )}
+
+        {/* ── 商品详情 Drawer ── */}
+        <Drawer
+          open={!!drawerProduct}
+          onClose={() => setDrawerProduct(null)}
+          title="商品详情"
+          width="w-[420px]"
+        >
+          {drawerProduct && (
+            <div className="p-5 space-y-5">
+              {/* 主图 */}
+              {drawerProduct.image_url ? (
+                <img src={drawerProduct.image_url} alt={drawerProduct.title}
+                  className="w-full aspect-square object-cover rounded-xl" />
+              ) : (
+                <div className="w-full aspect-square rounded-xl bg-slate-800 flex items-center justify-center text-slate-600">
+                  <Package className="w-16 h-16" />
+                </div>
+              )}
+
+              {/* 标题 + 外链 */}
+              <div className="space-y-1">
+                <div className="flex items-start gap-2">
+                  <h2 className="text-base font-semibold text-white flex-1 leading-snug">{drawerProduct.title}</h2>
+                  <a
+                    href={`https://${shops.find(s => s.id === selectedShopId)?.domain}/products`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-slate-500 hover:text-blue-400 mt-0.5 shrink-0"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+
+              {/* 基本信息 */}
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: "var(--color-border)" }}>
+                  <span className="text-slate-400">状态</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    drawerProduct.status === "active" ? "bg-emerald-500/20 text-emerald-400" :
+                    drawerProduct.status === "draft" ? "bg-amber-500/20 text-amber-400" :
+                    "bg-slate-600/40 text-slate-400"
+                  }`}>
+                    {drawerProduct.status === "active" ? "上架" : drawerProduct.status === "draft" ? "草稿" : drawerProduct.status}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: "var(--color-border)" }}>
+                  <span className="text-slate-400">价格</span>
+                  <span className="text-white font-medium">{drawerProduct.price ? `$${drawerProduct.price}` : "—"}</span>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: "var(--color-border)" }}>
+                  <span className="text-slate-400">上架时间</span>
+                  <span className="text-white">{formatDate(drawerProduct.published_at)}</span>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: "var(--color-border)" }}>
+                  <span className="text-slate-400">创建时间</span>
+                  <span className="text-white">{formatDate(drawerProduct.shopify_created_at)}</span>
+                </div>
+
+                {drawerProduct.product_type && (
+                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: "var(--color-border)" }}>
+                    <span className="text-slate-400">商品类型</span>
+                    <span className="text-white">{drawerProduct.product_type}</span>
+                  </div>
+                )}
+
+                {drawerProduct.tags && (
+                  <div className="py-2">
+                    <p className="text-slate-400 mb-2 flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" />标签</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {drawerProduct.tags.split(",").filter(Boolean).map(tag => (
+                        <span key={tag.trim()} className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
+                          {tag.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="pt-2 flex gap-2">
+                <Button
+                  onClick={() => { toggleOne(drawerProduct.shopify_product_id); setDrawerProduct(null) }}
+                  variant="outline"
+                  className="flex-1 border-slate-600 text-slate-300 hover:text-white"
+                >
+                  {selectedIds.has(drawerProduct.shopify_product_id) ? "取消选中" : "加入优化"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!selectedIds.has(drawerProduct.shopify_product_id)) {
+                      toggleOne(drawerProduct.shopify_product_id)
+                    }
+                    setDrawerProduct(null)
+                    handleOptimize(false)
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4" />单独优化
+                </Button>
+              </div>
+            </div>
+          )}
+        </Drawer>
 
         {/* 空状态 */}
         {step === "idle" && !loading && !error && (
