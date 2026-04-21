@@ -10,10 +10,11 @@ import { Drawer } from "@/components/ui/drawer"
 import {
   Sparkles, Loader2, CheckCircle2, ChevronDown,
   Send, AlertCircle, RefreshCw, Zap, Search,
-  ChevronLeft, ChevronRight, Clock, Tag, Package, ExternalLink,
+  ChevronLeft, ChevronRight, Clock, Tag, Package, ExternalLink, X,
 } from "lucide-react"
 
 type PageStep = "idle" | "syncing" | "ready" | "optimizing" | "previewing" | "applying" | "done"
+type ActionPanel = null | "seo" | "status" | "price"
 
 interface CachedProduct {
   shopify_product_id: number
@@ -77,6 +78,12 @@ export default function ShopifyAIPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [drawerProduct, setDrawerProduct] = useState<CachedProduct | null>(null)
+  const [actionPanel, setActionPanel] = useState<ActionPanel>(null)
+  const [statusTarget, setStatusTarget] = useState("active")
+  const [priceRule, setPriceRule] = useState("decrease_pct")
+  const [priceValue, setPriceValue] = useState<number>(10)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionResult, setActionResult] = useState<{ success: number; failed: number; msg: string } | null>(null)
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const PER_PAGE = 20
@@ -206,6 +213,39 @@ export default function ShopifyAIPage() {
     }
   }
 
+  const handleBulkStatus = async () => {
+    if (!selectedShopId || selectedIds.size === 0) return
+    setActionLoading(true)
+    setActionResult(null)
+    try {
+      const r = await agentApi.shopifyBulkStatus(selectedShopId, Array.from(selectedIds), statusTarget)
+      setActionResult({ success: r.data.success, failed: r.data.failed, msg: r.message || "" })
+      // 刷新列表
+      await loadProducts(selectedShopId, page, searchQ, filterStatus, sortBy)
+      setActionPanel(null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "操作失败")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleBulkPrice = async () => {
+    if (!selectedShopId || selectedIds.size === 0 || !priceValue) return
+    setActionLoading(true)
+    setActionResult(null)
+    try {
+      const r = await agentApi.shopifyBulkPrice(selectedShopId, Array.from(selectedIds), priceRule, priceValue)
+      setActionResult({ success: r.data.success, failed: r.data.failed, msg: r.message || "" })
+      await loadProducts(selectedShopId, page, searchQ, filterStatus, sortBy)
+      setActionPanel(null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "操作失败")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const handleApply = async () => {
     if (!selectedShopId || !task || selectedIds.size === 0) return
     setStep("applying")
@@ -268,21 +308,30 @@ export default function ShopifyAIPage() {
             {isSyncing ? "同步中..." : "重新同步"}
           </Button>
 
-          {/* 优化按钮（商品列表阶段）*/}
+          {/* 操作按钮（商品列表阶段）*/}
           {showProducts && !isOptimizing && (
             <>
               <div className="text-sm text-slate-400 ml-2">
                 已选 <span className="text-white font-medium">{selectedIds.size}</span> 件
               </div>
-              <Button onClick={() => handleOptimize(false)} disabled={selectedIds.size === 0}
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
-                <Sparkles className="w-4 h-4" />
-                优化选中 ({selectedIds.size})
+              <Button onClick={() => setActionPanel(actionPanel === "seo" ? null : "seo")}
+                disabled={selectedIds.size === 0}
+                className={`gap-2 ${actionPanel === "seo" ? "bg-blue-700" : "bg-blue-600 hover:bg-blue-700"} text-white`}>
+                <Sparkles className="w-4 h-4" />SEO 优化
               </Button>
-              <Button onClick={() => handleOptimize(true)}
-                className="bg-violet-600 hover:bg-violet-700 text-white gap-2">
-                <Zap className="w-4 h-4" />
-                一键全部优化 ({total})
+              <Button onClick={() => setActionPanel(actionPanel === "price" ? null : "price")}
+                disabled={selectedIds.size === 0}
+                className={`gap-2 ${actionPanel === "price" ? "bg-amber-700" : "bg-amber-600 hover:bg-amber-700"} text-white`}>
+                改价
+              </Button>
+              <Button onClick={() => setActionPanel(actionPanel === "status" ? null : "status")}
+                disabled={selectedIds.size === 0}
+                className={`gap-2 ${actionPanel === "status" ? "bg-slate-600" : "bg-slate-700 hover:bg-slate-600"} text-white`}>
+                上下架
+              </Button>
+              <Button onClick={() => handleOptimize(true)} variant="outline"
+                className="gap-2 border-slate-600 text-slate-400 hover:text-white ml-auto">
+                <Zap className="w-4 h-4" />一键全部 ({total})
               </Button>
             </>
           )}
@@ -349,6 +398,107 @@ export default function ShopifyAIPage() {
             {total > 0 && (
               <span className="text-xs text-slate-500 ml-auto">共 {total} 件</span>
             )}
+          </div>
+        )}
+
+        {/* ── SEO 操作面板 ── */}
+        {actionPanel === "seo" && showProducts && (
+          <div className="rounded-xl p-4 border space-y-3"
+            style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <p className="text-sm font-medium text-white">SEO 优化 · 已选 {selectedIds.size} 件</p>
+            <p className="text-xs text-slate-400">AI 将生成 SEO 标题、Meta 描述、Alt 文本、Product Schema，预览后确认写入</p>
+            <div className="flex gap-2">
+              <Button onClick={() => { setActionPanel(null); handleOptimize(false) }}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                <Sparkles className="w-4 h-4" />开始优化 ({selectedIds.size} 件)
+              </Button>
+              <Button variant="outline" onClick={() => setActionPanel(null)}
+                className="border-slate-600 text-slate-400 hover:text-white">取消</Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── 改价操作面板 ── */}
+        {actionPanel === "price" && showProducts && (
+          <div className="rounded-xl p-4 border space-y-4"
+            style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <p className="text-sm font-medium text-white">批量改价 · 已选 {selectedIds.size} 件</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <select value={priceRule} onChange={e => setPriceRule(e.target.value)}
+                  className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm border text-white cursor-pointer"
+                  style={{ background: "var(--color-sidebar)", borderColor: "var(--color-border)" }}>
+                  <option value="decrease_pct">降价 %</option>
+                  <option value="increase_pct">涨价 %</option>
+                  <option value="fixed">固定价格 $</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              </div>
+              <div className="flex items-center gap-1">
+                <Input type="number" min={0} step={priceRule === "fixed" ? 0.01 : 1}
+                  value={priceValue} onChange={e => setPriceValue(Number(e.target.value))}
+                  className="w-24 bg-transparent border-slate-700 text-white text-sm" />
+                <span className="text-slate-400 text-sm">{priceRule === "fixed" ? "USD" : "%"}</span>
+              </div>
+              {priceRule !== "fixed" && priceValue > 0 && (
+                <span className="text-xs text-slate-500">
+                  例：$100 → ${priceRule === "decrease_pct" ? (100 * (1 - priceValue / 100)).toFixed(2) : (100 * (1 + priceValue / 100)).toFixed(2)}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleBulkPrice} disabled={actionLoading || !priceValue}
+                className="bg-amber-600 hover:bg-amber-700 text-white gap-2">
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                确认改价 ({selectedIds.size} 件)
+              </Button>
+              <Button variant="outline" onClick={() => setActionPanel(null)}
+                className="border-slate-600 text-slate-400 hover:text-white">取消</Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── 上下架操作面板 ── */}
+        {actionPanel === "status" && showProducts && (
+          <div className="rounded-xl p-4 border space-y-4"
+            style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <p className="text-sm font-medium text-white">批量上下架 · 已选 {selectedIds.size} 件</p>
+            <div className="flex gap-2">
+              {[
+                { value: "active", label: "上架", color: "bg-emerald-600 hover:bg-emerald-700" },
+                { value: "draft", label: "下架（草稿）", color: "bg-slate-600 hover:bg-slate-500" },
+                { value: "archived", label: "归档", color: "bg-red-800 hover:bg-red-700" },
+              ].map(opt => (
+                <button key={opt.value} onClick={() => setStatusTarget(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm text-white transition-colors border-2 ${opt.color} ${statusTarget === opt.value ? "border-white" : "border-transparent"}`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleBulkStatus} disabled={actionLoading}
+                className="bg-slate-700 hover:bg-slate-600 text-white gap-2">
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                确认执行 ({selectedIds.size} 件)
+              </Button>
+              <Button variant="outline" onClick={() => setActionPanel(null)}
+                className="border-slate-600 text-slate-400 hover:text-white">取消</Button>
+            </div>
+          </div>
+        )}
+
+        {/* 操作结果提示 */}
+        {actionResult && (
+          <div className={`rounded-xl p-4 border flex items-center gap-3 text-sm ${
+            actionResult.failed === 0
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-400"
+          }`}>
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            {actionResult.msg || `成功 ${actionResult.success} 件${actionResult.failed > 0 ? `，${actionResult.failed} 件失败` : ""}`}
+            <button onClick={() => setActionResult(null)} className="ml-auto text-slate-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 

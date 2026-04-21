@@ -224,3 +224,66 @@ async def _publish_product(shop_domain: str, access_token: str, product_gid: str
             })
     except Exception:
         pass  # Publishing to channel is best-effort
+
+
+async def update_product_status(
+    shop_domain: str,
+    access_token: str,
+    product_id: int,
+    status: str,  # "active" | "draft" | "archived"
+) -> None:
+    """上架 / 下架 / 归档单个商品"""
+    url = f"https://{shop_domain}/admin/api/{API_VERSION}/products/{product_id}.json"
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.put(
+            url,
+            json={"product": {"id": product_id, "status": status}},
+            headers=_headers(access_token),
+        )
+        resp.raise_for_status()
+
+
+async def get_product_variants(
+    shop_domain: str,
+    access_token: str,
+    product_id: int,
+) -> list[dict]:
+    """获取商品的所有变体"""
+    url = f"https://{shop_domain}/admin/api/{API_VERSION}/products/{product_id}/variants.json"
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(url, headers=_headers(access_token))
+        resp.raise_for_status()
+        return resp.json().get("variants", [])
+
+
+async def update_variant_prices(
+    shop_domain: str,
+    access_token: str,
+    product_id: int,
+    rule_type: str,   # "fixed" | "increase_pct" | "decrease_pct"
+    rule_value: float,
+) -> int:
+    """按规则更新商品所有变体价格，返回更新数量"""
+    variants = await get_product_variants(shop_domain, access_token, product_id)
+    updated = 0
+    async with httpx.AsyncClient(timeout=30) as client:
+        for v in variants:
+            current = float(v.get("price") or 0)
+            if rule_type == "fixed":
+                new_price = rule_value
+            elif rule_type == "increase_pct":
+                new_price = current * (1 + rule_value / 100)
+            elif rule_type == "decrease_pct":
+                new_price = current * (1 - rule_value / 100)
+            else:
+                continue
+            new_price = max(round(new_price, 2), 0.01)
+            url = f"https://{shop_domain}/admin/api/{API_VERSION}/variants/{v['id']}.json"
+            resp = await client.put(
+                url,
+                json={"variant": {"id": v["id"], "price": f"{new_price:.2f}"}},
+                headers=_headers(access_token),
+            )
+            if resp.status_code == 200:
+                updated += 1
+    return updated

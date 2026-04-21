@@ -509,6 +509,18 @@ export const agentApi = {
       body: JSON.stringify({ shop_id, product_ids: product_ids ?? null }),
     }),
 
+  shopifyBulkStatus: (shop_id: number, product_ids: number[], status: string) =>
+    request<ApiResponse<{ total: number; success: number; failed: number; errors: string[] }>>("/agent/shopify-bulk-status", {
+      method: "POST",
+      body: JSON.stringify({ shop_id, product_ids, status }),
+    }),
+
+  shopifyBulkPrice: (shop_id: number, product_ids: number[], rule_type: string, rule_value: number) =>
+    request<ApiResponse<{ total: number; success: number; failed: number; errors: string[] }>>("/agent/shopify-bulk-price", {
+      method: "POST",
+      body: JSON.stringify({ shop_id, product_ids, rule_type, rule_value }),
+    }),
+
   shopifySeoApply: (shop_id: number, task_id: number, selected_shopify_ids: number[]) =>
     request<ApiResponse<{ total: number; success: number; failed: number; errors: string[] }>>("/agent/shopify-seo-apply", {
       method: "POST",

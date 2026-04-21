@@ -12,6 +12,7 @@ from app.schemas.agent import (
     SocialCopyRequest, SocialCopyResult,
     VideoGenerationRequest, PublishRequest,
     ShopifySeoOptimizeRequest, ShopifySeoApplyRequest, ShopifySeoApplyResult,
+    ShopifyBulkStatusRequest, ShopifyBulkPriceRequest, ShopifyBulkResult,
     AgentTaskResponse,
 )
 from app.schemas.common import Response
@@ -627,6 +628,104 @@ async def apply_shopify_seo(
     return Response(
         data=ShopifySeoApplyResult(total=len(to_apply), success=success, failed=failed, errors=errors),
         message=f"已成功更新 {success} 件商品 SEO",
+    )
+
+
+# ── 批量上下架 ────────────────────────────────────────────────────────────────
+
+@router.post("/shopify-bulk-status", response_model=Response[ShopifyBulkResult])
+async def bulk_update_status(
+    body: ShopifyBulkStatusRequest,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    from app.models.shop import Shop as ShopModel
+    from app.utils.shopify import update_product_status
+    from sqlalchemy import text
+
+    shop = (await db.execute(
+        select(ShopModel).where(ShopModel.id == body.shop_id, ShopModel.user_id == current_user_id, ShopModel.is_deleted == False)
+    )).scalar_one_or_none()
+    if not shop:
+        raise HTTPException(status_code=404, detail="店铺不存在")
+    if not shop.access_token:
+        raise HTTPException(status_code=400, detail="店铺未配置 Access Token")
+
+    success, failed, errors = 0, 0, []
+    for pid in body.product_ids:
+        try:
+            await update_product_status(shop.domain, shop.access_token, pid, body.status)
+            success += 1
+        except Exception as e:
+            failed += 1
+            errors.append(f"{pid}: {e}")
+
+    # 同步更新本地缓存状态
+    if success > 0:
+        placeholders = ",".join([":p" + str(i) for i in range(len(body.product_ids))])
+        params = {"status": body.status, "shop_id": body.shop_id}
+        params.update({f"p{i}": pid for i, pid in enumerate(body.product_ids)})
+        await db.execute(
+            text(f"UPDATE shopify_products_cache SET status=:status WHERE shop_id=:shop_id AND shopify_product_id IN ({placeholders})"),
+            params
+        )
+        await db.commit()
+
+    label = {"active": "上架", "draft": "下架为草稿", "archived": "归档"}.get(body.status, body.status)
+    return Response(
+        data=ShopifyBulkResult(total=len(body.product_ids), success=success, failed=failed, errors=errors),
+        message=f"已{label} {success} 件商品",
+    )
+
+
+# ── 批量改价 ──────────────────────────────────────────────────────────────────
+
+@router.post("/shopify-bulk-price", response_model=Response[ShopifyBulkResult])
+async def bulk_update_price(
+    body: ShopifyBulkPriceRequest,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    from app.models.shop import Shop as ShopModel
+    from app.utils.shopify import update_variant_prices, get_product_variants
+    from sqlalchemy import text
+
+    shop = (await db.execute(
+        select(ShopModel).where(ShopModel.id == body.shop_id, ShopModel.user_id == current_user_id, ShopModel.is_deleted == False)
+    )).scalar_one_or_none()
+    if not shop:
+        raise HTTPException(status_code=404, detail="店铺不存在")
+    if not shop.access_token:
+        raise HTTPException(status_code=400, detail="店铺未配置 Access Token")
+
+    success, failed, errors = 0, 0, []
+    price_updates: dict[int, str] = {}  # product_id → new_price for cache
+
+    for pid in body.product_ids:
+        try:
+            await update_variant_prices(shop.domain, shop.access_token, pid, body.rule_type, body.rule_value)
+            success += 1
+            # 取第一个变体新价格用于缓存更新
+            variants = await get_product_variants(shop.domain, shop.access_token, pid)
+            if variants:
+                price_updates[pid] = variants[0].get("price", "")
+        except Exception as e:
+            failed += 1
+            errors.append(f"{pid}: {e}")
+
+    # 同步更新本地缓存价格
+    for pid, new_price in price_updates.items():
+        await db.execute(
+            text("UPDATE shopify_products_cache SET price=:price WHERE shop_id=:shop_id AND shopify_product_id=:pid"),
+            {"price": new_price, "shop_id": body.shop_id, "pid": pid}
+        )
+    if price_updates:
+        await db.commit()
+
+    rule_label = {"fixed": f"改为 ${body.rule_value}", "increase_pct": f"涨价 {body.rule_value}%", "decrease_pct": f"降价 {body.rule_value}%"}.get(body.rule_type, "")
+    return Response(
+        data=ShopifyBulkResult(total=len(body.product_ids), success=success, failed=failed, errors=errors),
+        message=f"{rule_label}，成功 {success} 件",
     )
 
 

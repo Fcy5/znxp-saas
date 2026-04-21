@@ -99,3 +99,23 @@ class ShopifySeoApplyResult(BaseModel):
     success: int
     failed: int
     errors: list[str]
+
+
+class ShopifyBulkStatusRequest(BaseModel):
+    shop_id: int
+    product_ids: list[int]
+    status: str  # "active" | "draft" | "archived"
+
+
+class ShopifyBulkPriceRequest(BaseModel):
+    shop_id: int
+    product_ids: list[int]
+    rule_type: str    # "fixed" | "increase_pct" | "decrease_pct"
+    rule_value: float
+
+
+class ShopifyBulkResult(BaseModel):
+    total: int
+    success: int
+    failed: int
+    errors: list[str]
