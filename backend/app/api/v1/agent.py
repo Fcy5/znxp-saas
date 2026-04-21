@@ -402,6 +402,43 @@ async def trigger_publish(
     return Response(data=_task_resp(task), message="上架任务已创建")
 
 
+# ── shopify 商品列表（无 AI，纯拉取）────────────────────────────────────────────
+
+@router.get("/shopify-products", response_model=Response[list])
+async def list_shopify_products(
+    shop_id: int,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    """从 Shopify 拉取商品列表（不调 AI），供用户勾选后再优化"""
+    from app.models.shop import Shop as ShopModel
+    from app.utils.shopify import list_products
+
+    shop = (await db.execute(
+        select(ShopModel).where(ShopModel.id == shop_id, ShopModel.user_id == current_user_id, ShopModel.is_deleted == False)
+    )).scalar_one_or_none()
+    if not shop:
+        raise HTTPException(status_code=404, detail="店铺不存在")
+    if not shop.access_token:
+        raise HTTPException(status_code=400, detail="店铺未配置 Access Token")
+
+    try:
+        products = await list_products(shop.domain, shop.access_token, limit=250)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Shopify 请求失败: {e}")
+
+    result = []
+    for p in products:
+        images = p.get("images") or []
+        result.append({
+            "shopify_product_id": p["id"],
+            "title": p.get("title") or "",
+            "image_url": images[0].get("src", "") if images else "",
+            "status": p.get("status", "active"),
+        })
+    return Response(data=result)
+
+
 # ── shopify_seo_optimize ──────────────────────────────────────────────────────
 
 @router.post("/shopify-seo-optimize", response_model=Response[AgentTaskResponse])

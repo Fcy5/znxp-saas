@@ -492,6 +492,11 @@ export const agentApi = {
       body: JSON.stringify({ product_ids, shop_id: shop_id ?? null }),
     }),
 
+  listShopifyProducts: (shop_id: number) =>
+    request<ApiResponse<{ shopify_product_id: number; title: string; image_url: string; status: string }[]>>(
+      `/agent/shopify-products?shop_id=${shop_id}`
+    ),
+
   shopifySeoOptimize: (shop_id: number, product_ids?: number[]) =>
     request<ApiResponse<AgentTask>>("/agent/shopify-seo-optimize", {
       method: "POST",
