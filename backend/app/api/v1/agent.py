@@ -10,7 +10,7 @@ from app.schemas.agent import (
     CopywritingRequest, CopywritingResult,
     ImageProcessRequest, ImageGenerateRequest, ImageGenerateResult,
     SocialCopyRequest, SocialCopyResult,
-    VideoGenerationRequest, PublishRequest,
+    VideoGenerationRequest, VideoFromUrlRequest, PublishRequest,
     ShopifySeoOptimizeRequest, ShopifySeoApplyRequest, ShopifySeoApplyResult,
     ShopifyBulkStatusRequest, ShopifyBulkPriceRequest, ShopifyBulkResult,
     AgentTaskResponse,
@@ -378,12 +378,54 @@ async def trigger_video_generation(
     current_user_id: CurrentUser,
     db: DBSession,
 ):
-    """视频全自动二创（功能开发中）"""
+    """图生视频：调用阿里云百炼 wan2.1-i2v-turbo（需配置 DASHSCOPE_API_KEY）"""
+    if not settings.dashscope_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="DASHSCOPE_API_KEY 未配置。注册: https://bailian.aliyun.com/ 开通服务自动获得新人免费额度，API Key: https://dashscope.console.aliyun.com/apiKey"
+        )
+
     task = await _create_task(db, current_user_id, "video_generation",
                               product_id=body.product_id,
-                              input_data={"variant_count": body.variant_count})
+                              input_data={
+                                  "duration": body.duration,
+                                  "resolution": body.resolution,
+                              })
     await db.commit()
-    return Response(data=_task_resp(task), message=f"视频生成任务已创建（功能开发中）")
+
+    from app.services.agent_tasks import run_video_generation
+    background_tasks.add_task(
+        run_video_generation,
+        task.id, body.product_id, current_user_id,
+        body.duration, body.resolution,
+    )
+
+    return Response(data=_task_resp(task), message="视频生成已启动，约 60-120 秒完成，请稍后查看结果")
+
+
+# ── video-from-url（Shopify AI 页面直传图片URL）──────────────────────────────
+
+@router.post("/video-from-url", response_model=Response[AgentTaskResponse])
+async def video_from_url(
+    body: VideoFromUrlRequest,
+    background_tasks: BackgroundTasks,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    """Shopify 商品图生视频：直接传入图片URL，无需 product_id"""
+    if not settings.dashscope_api_key:
+        raise HTTPException(status_code=503, detail="DASHSCOPE_API_KEY 未配置")
+
+    task = await _create_task(db, current_user_id, "video_generation",
+                              input_data={"image_url": body.image_url, "title": body.title})
+    await db.commit()
+
+    from app.services.agent_tasks import run_video_from_url
+    background_tasks.add_task(
+        run_video_from_url,
+        task.id, body.image_url, body.title, body.product_type, body.duration,
+    )
+    return Response(data=_task_resp(task), message="视频生成已启动，约 60-120 秒完成")
 
 
 # ── publish（TODO）───────────────────────────────────────────────────────────

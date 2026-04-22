@@ -10,7 +10,7 @@ import { Drawer } from "@/components/ui/drawer"
 import {
   Sparkles, Loader2, CheckCircle2, ChevronDown,
   Send, AlertCircle, RefreshCw, Zap, Search,
-  ChevronLeft, ChevronRight, Clock, Tag, Package, ExternalLink, X,
+  ChevronLeft, ChevronRight, Clock, Tag, Package, ExternalLink, X, Video,
 } from "lucide-react"
 
 type PageStep = "idle" | "syncing" | "ready" | "optimizing" | "previewing" | "applying" | "done"
@@ -78,6 +78,10 @@ export default function ShopifyAIPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [drawerProduct, setDrawerProduct] = useState<CachedProduct | null>(null)
+  const [videoTaskId, setVideoTaskId] = useState<number | null>(null)
+  const [videoStatus, setVideoStatus] = useState<"idle"|"loading"|"polling"|"done"|"failed">("idle")
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [videoError, setVideoError] = useState("")
   const [actionPanel, setActionPanel] = useState<ActionPanel>(null)
   const [statusTarget, setStatusTarget] = useState("active")
   const [priceRule, setPriceRule] = useState("decrease_pct")
@@ -85,8 +89,18 @@ export default function ShopifyAIPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionResult, setActionResult] = useState<{ success: number; failed: number; msg: string } | null>(null)
 
+  const videoPollerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const PER_PAGE = 20
+
+  // 切换商品时重置视频状态
+  useEffect(() => {
+    if (videoPollerRef.current) clearInterval(videoPollerRef.current)
+    setVideoTaskId(null)
+    setVideoStatus("idle")
+    setVideoUrl(null)
+    setVideoError("")
+  }, [drawerProduct?.shopify_product_id])
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -113,6 +127,40 @@ export default function ShopifyAIPage() {
       setLoading(false)
     }
   }, [])
+
+  const handleVideoGen = async (product: CachedProduct) => {
+    if (!product.image_url) { setVideoError("该商品没有图片"); return }
+    setVideoStatus("loading")
+    setVideoError("")
+    setVideoUrl(null)
+    try {
+      const r = await agentApi.videoFromUrl(product.image_url, product.title, product.product_type)
+      const tid = r.data.id
+      setVideoTaskId(tid)
+      setVideoStatus("polling")
+      videoPollerRef.current = setInterval(async () => {
+        try {
+          const tr = await agentApi.pollTask(tid)
+          if (tr.data.status === "success") {
+            clearInterval(videoPollerRef.current!)
+            setVideoStatus("done")
+            setVideoUrl((tr.data.output_data?.video_url as string) || null)
+          } else if (tr.data.status === "failed") {
+            clearInterval(videoPollerRef.current!)
+            setVideoStatus("failed")
+            setVideoError(tr.data.error_message || "视频生成失败")
+          }
+        } catch {
+          clearInterval(videoPollerRef.current!)
+          setVideoStatus("failed")
+          setVideoError("轮询失败")
+        }
+      }, 5000)
+    } catch (e: unknown) {
+      setVideoStatus("failed")
+      setVideoError(e instanceof Error ? e.message : "启动失败")
+    }
+  }
 
   // 切换店铺
   const handleShopChange = (id: number) => {
@@ -789,6 +837,78 @@ export default function ShopifyAIPage() {
                 >
                   <Sparkles className="w-4 h-4" />单独优化
                 </Button>
+              </div>
+
+              {/* ── 视频生成区域 ── */}
+              <div className="border-t pt-4 space-y-3" style={{ borderColor: "var(--color-border)" }}>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Video className="w-3.5 h-3.5" />AI 视频 & 社媒素材
+                </p>
+
+                {videoStatus === "idle" && (
+                  <Button
+                    onClick={() => handleVideoGen(drawerProduct)}
+                    disabled={!drawerProduct.image_url}
+                    className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
+                  >
+                    <Video className="w-4 h-4" />生成视频 & 社媒素材
+                  </Button>
+                )}
+
+                {(videoStatus === "loading" || videoStatus === "polling") && (
+                  <div className="rounded-lg p-4 border border-violet-500/30 bg-violet-500/10 space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-violet-300">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {videoStatus === "loading" ? "正在提交任务..." : "AI 生成中，约 60-120 秒..."}
+                    </div>
+                    <Progress value={videoStatus === "loading" ? 5 : 40} className="h-1.5" />
+                    <p className="text-xs text-slate-500">使用阿里云百炼 wan2.7 图生视频</p>
+                  </div>
+                )}
+
+                {videoStatus === "failed" && (
+                  <div className="rounded-lg p-3 border border-red-500/30 bg-red-500/10 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-red-400">{videoError || "生成失败"}</p>
+                      <button onClick={() => setVideoStatus("idle")} className="text-xs text-slate-400 hover:text-white mt-1 underline">
+                        重试
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {videoStatus === "done" && videoUrl && (
+                  <div className="space-y-3">
+                    <div className="rounded-xl overflow-hidden border border-violet-500/30">
+                      <video
+                        src={videoUrl.startsWith("http") ? videoUrl : `${typeof window !== "undefined" ? window.location.origin : ""}${videoUrl}`}
+                        controls
+                        autoPlay
+                        loop
+                        muted
+                        className="w-full"
+                        style={{ maxHeight: 240 }}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <a
+                        href={videoUrl.startsWith("http") ? videoUrl : `${typeof window !== "undefined" ? window.location.origin : ""}${videoUrl}`}
+                        download
+                        className="flex-1 text-center text-xs py-2 rounded-lg border border-violet-500/40 text-violet-300 hover:bg-violet-500/10 transition-colors"
+                      >
+                        下载视频
+                      </a>
+                      <button
+                        onClick={() => setVideoStatus("idle")}
+                        className="flex-1 text-xs py-2 rounded-lg border border-slate-600 text-slate-400 hover:text-white transition-colors"
+                      >
+                        重新生成
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 text-center">可直接发布到 TikTok / Instagram Reels / Facebook</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

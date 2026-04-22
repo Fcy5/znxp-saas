@@ -22,7 +22,7 @@ const taskMeta: Record<string, { label: string; icon: string }> = {
   batch_copywriting: { label: "SEO & GEO 批量文案", icon: "✍️" },
   copywriting:       { label: "SEO & GEO 文案重构", icon: "✍️" },
   image_processing:  { label: "图片深度处理",     icon: "🖼️" },
-  video_generation:  { label: "视频全自动二创",   icon: "🎬" },
+  video_generation:  { label: "AI 视频生成",      icon: "🎬" },
   publish:           { label: "上架到 Shopify",   icon: "🚀" },
 }
 
@@ -112,6 +112,25 @@ export function AgentTaskCard({ task }: { task: AgentTask }) {
               {output.niche && <p><span className="text-muted-foreground">定位：</span>{String(output.niche)}</p>}
               {output.profile_summary && (
                 <p className="text-muted-foreground line-clamp-3">{String(output.profile_summary).slice(0, 200)}...</p>
+              )}
+            </>
+          )}
+          {task.task_type === "video_generation" && (
+            <>
+              <p className="text-muted-foreground">
+                商品：<span className="text-foreground font-medium">{String(output.product_title ?? "")}</span>
+                {!!output.duration && <> · {String(output.duration)}秒 · {String(output.resolution)}</>}
+              </p>
+              {output.video_url && (
+                <a
+                  href={String(output.video_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-medium"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  播放视频
+                </a>
               )}
             </>
           )}

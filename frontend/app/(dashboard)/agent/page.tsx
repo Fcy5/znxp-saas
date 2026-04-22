@@ -55,12 +55,12 @@ const agentCapabilities = [
   {
     type: "video_generation",
     icon: "🎬",
-    title: "视频全自动二创",
-    badge: "开发中",
-    badgeVariant: "warning" as const,
-    status: "wip" as const,
-    description: "从 TikTok/Facebook 抓取爆款视频 → Gemini 智能剪辑 → Google Veo 画面重绘 → AI 配音字幕 → 批量变体。",
-    steps: ["视频素材抓取", "智能剪辑", "Veo 画面重绘", "AI 配音+字幕", "批量裂变"],
+    title: "AI 视频生成",
+    badge: "已上线",
+    badgeVariant: "success" as const,
+    status: "live" as const,
+    description: "基于商品主图，调用火山引擎 Seedance 生成 5-10 秒商品展示视频，720p，无水印，适合社媒素材。",
+    steps: ["读取商品主图", "Seedance 图生视频", "下载存储", "返回可播放链接"],
   },
   {
     type: "publish",
@@ -76,7 +76,7 @@ const agentCapabilities = [
 
 // 已上线能力的顺序（工作流步骤）
 const WORKFLOW_STEPS = ["诊脉", "推品", "文案", "图片", "视频", "上架"]
-const WORKFLOW_LIVE = [true, true, true, false, false, true]
+const WORKFLOW_LIVE = [true, true, true, false, true, true]
 
 // ── 店铺选择弹窗 ──────────────────────────────────────────────────────────────
 function ShopSelectModal({
@@ -134,10 +134,12 @@ function ShopSelectModal({
   )
 }
 
-// ── 选品弹窗（批量文案用）────────────────────────────────────────────────────
-function ProductPickerModal({ onConfirm, onClose }: {
+// ── 选品弹窗（批量文案 / 单选视频用）────────────────────────────────────────
+function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案的商品", singleSelect = false }: {
   onConfirm: (productIds: number[], shopId?: number) => void
   onClose: () => void
+  title?: string
+  singleSelect?: boolean
 }) {
   const [products, setProducts] = useState<ProductCard[]>([])
   const [loading, setLoading] = useState(true)
@@ -157,11 +159,14 @@ function ProductPickerModal({ onConfirm, onClose }: {
       .finally(() => setLoading(false))
   }, [keyword])
 
-  const toggle = (id: number) => setSelected(prev => {
-    const s = new Set(prev)
-    s.has(id) ? s.delete(id) : s.add(id)
-    return s
-  })
+  const toggle = (id: number) => {
+    if (singleSelect) { onConfirm([id]); return }
+    setSelected(prev => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
+  }
   const toggleAll = () => {
     if (selected.size === products.length) setSelected(new Set())
     else setSelected(new Set(products.map(p => p.id)))
@@ -172,7 +177,7 @@ function ProductPickerModal({ onConfirm, onClose }: {
       <Card className="w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <CardHeader className="shrink-0 pb-3">
           <CardTitle className="flex items-center justify-between text-sm">
-            选择要生成文案的商品
+            {title}
             <button onClick={onClose}><X className="w-4 h-4 text-muted-foreground" /></button>
           </CardTitle>
           <div className="relative mt-2">
@@ -306,6 +311,17 @@ export default function AgentPage() {
       setTasks(prev => [task, ...prev])
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "启动失败")
+    } finally { setLaunching(null) }
+  }
+
+  const handleLaunchVideo = async (productId: number) => {
+    setModalType(null)
+    setLaunching("video_generation")
+    try {
+      const task = (await agentApi.videoGeneration(productId, 5, "720p")).data!
+      setTasks(prev => [task, ...prev])
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "启动失败，请确认已配置 ARK_API_KEY")
     } finally { setLaunching(null) }
   }
 
@@ -465,7 +481,7 @@ export default function AgentPage() {
       </div>
 
       {/* 店铺选择弹窗（诊脉/推品） */}
-      {modalType && modalType !== "workflow" && modalType !== "batch_copywriting" && (
+      {modalType && !["workflow", "batch_copywriting", "video_generation"].includes(modalType) && (
         <ShopSelectModal
           title={modalType === "store_profile" ? "选择要诊脉的店铺" : "选择要推品的店铺"}
           onSelect={(shop) => handleLaunch(modalType, shop)}
@@ -477,6 +493,16 @@ export default function AgentPage() {
       {modalType === "batch_copywriting" && (
         <ProductPickerModal
           onConfirm={handleLaunchCopy}
+          onClose={() => setModalType(null)}
+        />
+      )}
+
+      {/* 选品弹窗（视频生成，单选） */}
+      {modalType === "video_generation" && (
+        <ProductPickerModal
+          title="选择商品生成视频（点击即启动）"
+          singleSelect
+          onConfirm={(ids) => { if (ids[0]) handleLaunchVideo(ids[0]) }}
           onClose={() => setModalType(null)}
         />
       )}

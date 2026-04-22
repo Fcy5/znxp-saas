@@ -526,4 +526,19 @@ export const agentApi = {
       method: "POST",
       body: JSON.stringify({ shop_id, task_id, selected_shopify_ids }),
     }),
+
+  videoGeneration: (product_id: number, duration = 5, resolution = "720p") =>
+    request<ApiResponse<AgentTask>>("/agent/video-generation", {
+      method: "POST",
+      body: JSON.stringify({ product_id, duration, resolution }),
+    }),
+
+  videoFromUrl: (image_url: string, title: string, product_type = "", duration = 5) =>
+    request<ApiResponse<AgentTask>>("/agent/video-from-url", {
+      method: "POST",
+      body: JSON.stringify({ image_url, title, product_type, duration }),
+    }),
+
+  pollTask: (task_id: number) =>
+    request<ApiResponse<AgentTask>>(`/agent/tasks/${task_id}`),
 }

@@ -721,3 +721,243 @@ Return ONLY valid JSON with these exact keys:
 
     except Exception as e:
         _update_task(task_id, status="failed", error_message=str(e))
+
+
+# ── run_video_generation（阿里云百炼 DashScope wan2.1-i2v-turbo）──────────────
+
+def run_video_generation(task_id: int, product_id: int, user_id: int,
+                         duration: int = 5, resolution: str = "720p"):
+    """图生视频：阿里云百炼 wan2.1-i2v-turbo，异步轮询，结果存本地"""
+    import time
+    import os
+    import uuid
+
+    if not settings.dashscope_api_key:
+        _update_task(task_id, status="failed",
+                     error_message=(
+                         "DASHSCOPE_API_KEY 未配置。"
+                         "注册: https://bailian.aliyun.com/ 开通服务自动获得新人免费额度，"
+                         "API Key: https://dashscope.console.aliyun.com/apiKey"
+                     ))
+        return
+
+    try:
+        _update_task(task_id, status="running", progress=10)
+
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT title, main_image, category FROM products WHERE id = %s AND is_deleted = 0",
+                    (product_id,),
+                )
+                product = cur.fetchone()
+        finally:
+            conn.close()
+
+        if not product:
+            _update_task(task_id, status="failed", error_message="商品不存在")
+            return
+
+        title = product["title"] or "product"
+        image_url = product["main_image"] or ""
+        category = product["category"] or ""
+
+        prompt = (
+            f"E-commerce product showcase. Product: {title}. Category: {category}. "
+            "Smooth camera movement, bright studio lighting, commercial photography style, "
+            "clean white background, no text overlay, professional quality."
+        )
+
+        headers = {
+            "Authorization": f"Bearer {settings.dashscope_api_key}",
+            "Content-Type": "application/json",
+            "X-DashScope-Async": "enable",
+        }
+        # 绕过本地代理直连阿里云（trust_env=False 忽略 HTTPS_PROXY 环境变量）
+        ds_client_kwargs = {"timeout": 30, "trust_env": False}
+
+        endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis"
+
+        # 图生视频 or 文生视频
+        if image_url.startswith("https://"):
+            payload = {
+                "model": "wan2.7-i2v",
+                "input": {
+                    "media": [{"type": "first_frame", "url": image_url}],
+                    "prompt": prompt[:500],
+                },
+                "parameters": {"duration": duration},
+            }
+        else:
+            payload = {
+                "model": "wan2.1-t2v-turbo",
+                "input": {"prompt": prompt[:500]},
+                "parameters": {"duration": duration, "size": "1280*720"},
+            }
+
+        _update_task(task_id, progress=20)
+
+        with httpx.Client(**ds_client_kwargs) as client:
+            resp = client.post(endpoint, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        ds_task_id = data.get("output", {}).get("task_id")
+        if not ds_task_id:
+            _update_task(task_id, status="failed",
+                         error_message=f"DashScope 创建任务失败: {json.dumps(data, ensure_ascii=False)}")
+            return
+
+        _update_task(task_id, progress=30)
+
+        # 轮询，最多等 5 分钟（30 次 × 10 秒）
+        poll_url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{ds_task_id}"
+        poll_headers = {"Authorization": f"Bearer {settings.dashscope_api_key}"}
+        for i in range(30):
+            time.sleep(10)
+            with httpx.Client(**ds_client_kwargs) as client:
+                poll_resp = client.get(poll_url, headers=poll_headers)
+                poll_resp.raise_for_status()
+                poll_data = poll_resp.json()
+
+            ds_status = poll_data.get("output", {}).get("task_status", "")
+            _update_task(task_id, progress=min(30 + (i + 1) * 2, 90))
+
+            if ds_status == "SUCCEEDED":
+                video_url = poll_data.get("output", {}).get("video_url")
+                if not video_url:
+                    _update_task(task_id, status="failed", error_message="DashScope 未返回视频 URL")
+                    return
+
+                video_dir = os.path.join(os.path.dirname(__file__), "../../static/uploads/ai_videos")
+                os.makedirs(video_dir, exist_ok=True)
+                filename = f"{uuid.uuid4().hex}.mp4"
+                filepath = os.path.join(video_dir, filename)
+
+                with httpx.Client(timeout=120, trust_env=False) as client:
+                    video_resp = client.get(video_url)
+                    with open(filepath, "wb") as f:
+                        f.write(video_resp.content)
+
+                _update_task(task_id, status="success", progress=100, output_data={
+                    "video_url": f"/static/uploads/ai_videos/{filename}",
+                    "product_id": product_id,
+                    "product_title": title,
+                    "duration": duration,
+                    "resolution": resolution,
+                })
+                return
+
+            elif ds_status in ("FAILED", "CANCELED"):
+                err = poll_data.get("output", {}).get("message", ds_status)
+                _update_task(task_id, status="failed",
+                             error_message=f"DashScope 任务失败: {err}")
+                return
+
+        _update_task(task_id, status="failed", error_message="视频生成超时（5 分钟），请重试")
+
+    except Exception as e:
+        _update_task(task_id, status="failed", error_message=str(e))
+
+
+# ── run_video_from_url（直接传图片URL，供 Shopify AI 页面使用）─────────────────
+
+def run_video_from_url(task_id: int, image_url: str, title: str,
+                       product_type: str = "", duration: int = 5):
+    """图生视频：直接传入图片URL，无需 product_id（Shopify 商品用）"""
+    import time, os, uuid
+
+    if not settings.dashscope_api_key:
+        _update_task(task_id, status="failed",
+                     error_message="DASHSCOPE_API_KEY 未配置")
+        return
+
+    try:
+        _update_task(task_id, status="running", progress=10)
+
+        prompt = (
+            f"E-commerce product showcase. Product: {title}. Type: {product_type}. "
+            "Smooth camera movement, bright studio lighting, commercial photography style, "
+            "clean white background, no text overlay, professional quality."
+        )
+
+        headers = {
+            "Authorization": f"Bearer {settings.dashscope_api_key}",
+            "Content-Type": "application/json",
+            "X-DashScope-Async": "enable",
+        }
+        ds_kwargs = {"timeout": 30, "trust_env": False}
+        endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis"
+
+        if image_url.startswith("https://"):
+            payload = {
+                "model": "wan2.7-i2v",
+                "input": {
+                    "media": [{"type": "first_frame", "url": image_url}],
+                    "prompt": prompt[:500],
+                },
+                "parameters": {"duration": duration},
+            }
+        else:
+            payload = {
+                "model": "wan2.1-t2v-turbo",
+                "input": {"prompt": prompt[:500]},
+                "parameters": {"duration": duration, "size": "1280*720"},
+            }
+
+        _update_task(task_id, progress=20)
+
+        with httpx.Client(**ds_kwargs) as client:
+            resp = client.post(endpoint, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        ds_task_id = data.get("output", {}).get("task_id")
+        if not ds_task_id:
+            _update_task(task_id, status="failed",
+                         error_message=f"创建失败: {json.dumps(data, ensure_ascii=False)}")
+            return
+
+        _update_task(task_id, progress=30)
+
+        poll_url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{ds_task_id}"
+        poll_headers = {"Authorization": f"Bearer {settings.dashscope_api_key}"}
+        for i in range(30):
+            time.sleep(10)
+            with httpx.Client(**ds_kwargs) as client:
+                d = client.get(poll_url, headers=poll_headers).json()
+
+            status = d.get("output", {}).get("task_status", "")
+            _update_task(task_id, progress=min(30 + (i + 1) * 2, 90))
+
+            if status == "SUCCEEDED":
+                video_url = d.get("output", {}).get("video_url")
+                if not video_url:
+                    _update_task(task_id, status="failed", error_message="未返回视频URL")
+                    return
+
+                video_dir = os.path.join(os.path.dirname(__file__), "../../static/uploads/ai_videos")
+                os.makedirs(video_dir, exist_ok=True)
+                filename = f"{uuid.uuid4().hex}.mp4"
+                with httpx.Client(timeout=120, trust_env=False) as client:
+                    r = client.get(video_url)
+                    with open(os.path.join(video_dir, filename), "wb") as f:
+                        f.write(r.content)
+
+                _update_task(task_id, status="success", progress=100, output_data={
+                    "video_url": f"/static/uploads/ai_videos/{filename}",
+                    "title": title,
+                    "duration": duration,
+                })
+                return
+
+            elif status in ("FAILED", "CANCELED"):
+                _update_task(task_id, status="failed",
+                             error_message=d.get("output", {}).get("message", status))
+                return
+
+        _update_task(task_id, status="failed", error_message="视频生成超时，请重试")
+
+    except Exception as e:
+        _update_task(task_id, status="failed", error_message=str(e))

@@ -72,8 +72,15 @@ class SocialCopyResult(BaseModel):
 
 class VideoGenerationRequest(BaseModel):
     product_id: int
-    variant_count: int = 5   # A/B测试变体数量
-    voice_language: str = "en-US"
+    duration: int = 5
+    resolution: str = "720p"
+
+
+class VideoFromUrlRequest(BaseModel):
+    image_url: str
+    title: str
+    product_type: str = ""
+    duration: int = 5
 
 
 class PublishRequest(BaseModel):

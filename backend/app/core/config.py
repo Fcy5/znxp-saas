@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     ai_model: str = "gemini-2.0-flash"
 
 
+    # 阿里云百炼 DashScope（视频生成 wan2.1-i2v / 文生图 wanx）
+    dashscope_api_key: str = ""
+
     # Shopify OAuth
     shopify_client_id: str = ""
     shopify_client_secret: str = ""
