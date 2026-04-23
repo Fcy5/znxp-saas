@@ -642,6 +642,73 @@ async def add_negative_keywords(
     )
 
 
+# ── 有转化历史词（全量，最远 13 个月）────────────────────────────────────────
+
+@router.get("/ads/converting-keywords")
+async def get_converting_keywords(
+    current_user_id: CurrentUser,
+    db: DBSession,
+    min_conversions: float = Query(0.5, description="最低转化数阈值"),
+    sort: str = Query("conversions", description="排序字段: conversions|roas|clicks"),
+):
+    """拉取历史全部有转化的搜索词（API 最远 ~13 个月）"""
+    from datetime import date, timedelta
+    access_token = await _get_valid_access_token(db, current_user_id)
+    customer_id = settings.google_ads_customer_id
+
+    # 往前推 400 天（覆盖 13 个月上限）
+    start = (date.today() - timedelta(days=400)).strftime("%Y-%m-%d")
+    end = date.today().strftime("%Y-%m-%d")
+
+    sort_col = {
+        "conversions": "metrics.conversions",
+        "roas": "metrics.conversions_value",
+        "clicks": "metrics.clicks",
+    }.get(sort, "metrics.conversions")
+
+    query = f"""
+        SELECT
+            search_term_view.search_term,
+            metrics.clicks,
+            metrics.impressions,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.conversions_value
+        FROM search_term_view
+        WHERE segments.date BETWEEN '{start}' AND '{end}'
+          AND metrics.conversions >= {min_conversions}
+        ORDER BY {sort_col} DESC
+        LIMIT 500
+    """
+    results = await _ads_search(access_token, customer_id, query)
+
+    keywords = []
+    for r in results:
+        stv = r.get("searchTermView", {})
+        m = r.get("metrics", {})
+        cost = int(m.get("costMicros", 0)) / 1_000_000
+        conv_value = float(m.get("conversionsValue", 0))
+        conv = float(m.get("conversions", 0))
+        roas = round(conv_value / cost, 2) if cost > 0 else 0
+        cpa = round(cost / conv, 2) if conv > 0 else 0
+        keywords.append({
+            "keyword": stv.get("searchTerm", ""),
+            "clicks": int(m.get("clicks", 0)),
+            "impressions": int(m.get("impressions", 0)),
+            "cost": round(cost, 2),
+            "conversions": round(conv, 2),
+            "conversion_value": round(conv_value, 2),
+            "roas": roas,
+            "cpa": cpa,
+        })
+
+    return Response(data={
+        "keywords": keywords,
+        "total": len(keywords),
+        "date_range": f"{start} ~ {end}",
+    })
+
+
 # ── AI 广告数据分析 ───────────────────────────────────────────────────────────
 
 class AdsAnalysisRequest(BaseModel):

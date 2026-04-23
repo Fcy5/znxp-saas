@@ -53,6 +53,7 @@ interface AdSummary {
 
 type GmcFilter = "all" | "pushed" | "not_pushed"
 type TabType = "products" | "ads"
+type AdsTabType = "terms" | "converting" | "products"
 type DaysRange = 7 | 30 | 90
 
 const GMC_STATUS: Record<string, { label: string; color: string; icon?: React.ReactNode }> = {
@@ -94,12 +95,17 @@ export default function GmcPage() {
   const [summary, setSummary] = useState<AdSummary | null>(null)
   const [searchTerms, setSearchTerms] = useState<SearchTerm[]>([])
   const [adProducts, setAdProducts] = useState<AdProduct[]>([])
-  const [adsTab, setAdsTab] = useState<"terms" | "products">("terms")
+  const [adsTab, setAdsTab] = useState<AdsTabType>("terms")
   const [negKw, setNegKw] = useState("")
   const [addingNeg, setAddingNeg] = useState(false)
   const [selectedTerms, setSelectedTerms] = useState<Set<string>>(new Set())
   const [aiAnalysis, setAiAnalysis] = useState("")
   const [aiLoading, setAiLoading] = useState(false)
+  // 历史转化词
+  const [convKws, setConvKws] = useState<any[]>([])
+  const [convLoading, setConvLoading] = useState(false)
+  const [convSort, setConvSort] = useState("conversions")
+  const [convLoaded, setConvLoaded] = useState(false)
 
   const PER_PAGE = 20
 
@@ -218,6 +224,16 @@ export default function GmcPage() {
   const toggleSelect = (pid: number) => setSelectedIds(prev => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n })
   const toggleAll = () => setSelectedIds(selectedIds.size === products.length ? new Set() : new Set(products.map(p => p.shopify_product_id)))
   const toggleTerm = (term: string) => setSelectedTerms(prev => { const n = new Set(prev); n.has(term) ? n.delete(term) : n.add(term); return n })
+
+  const loadConvertingKws = async () => {
+    setConvLoading(true)
+    try {
+      const res = await request<any>(`/gmc/ads/converting-keywords?sort=${convSort}`)
+      setConvKws(res.data?.keywords || [])
+      setConvLoaded(true)
+    } catch (e: any) { showMsg(e.message || "加载失败", "err") }
+    finally { setConvLoading(false) }
+  }
 
   const handleAiAnalysis = async () => {
     if (!summary) return showMsg("请先加载广告数据", "err")
@@ -450,10 +466,14 @@ export default function GmcPage() {
                       </div>
                     )}
 
-                    {/* 子 Tab：搜索词 / 商品维度 */}
+                    {/* 子 Tab */}
                     <div className="flex gap-1">
-                      {([["terms", Tag, "搜索词报告"], ["products", ShoppingCart, "商品维度"]] as const).map(([key, Icon, label]) => (
-                        <button key={key} onClick={() => setAdsTab(key)}
+                      {([
+                        ["terms", Tag, "搜索词报告"],
+                        ["converting", TrendingUp, "历史转化词"],
+                        ["products", ShoppingCart, "商品维度"],
+                      ] as const).map(([key, Icon, label]) => (
+                        <button key={key} onClick={() => setAdsTab(key as any)}
                           className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${adsTab === key ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-[var(--color-card)] border border-[var(--color-border)]"}`}>
                           <Icon className="w-3.5 h-3.5" />{label}
                         </button>
@@ -517,6 +537,65 @@ export default function GmcPage() {
                           </Button>
                         </div>
                       </>
+                    )}
+
+                    {/* 历史转化词 */}
+                    {adsTab === "converting" && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-xs text-slate-400">排序：</span>
+                          {([["conversions","转化数"],["roas","ROAS"],["clicks","点击量"]] as const).map(([v,l]) => (
+                            <button key={v} onClick={() => setConvSort(v)}
+                              className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${convSort === v ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-[var(--color-card)] border border-[var(--color-border)]"}`}>
+                              {l}
+                            </button>
+                          ))}
+                          <Button size="sm" onClick={loadConvertingKws} disabled={convLoading}
+                            className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white">
+                            {convLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
+                            {convLoaded ? "重新加载" : "加载历史转化词"}
+                          </Button>
+                          {convKws.length > 0 && (
+                            <span className="text-xs text-slate-400 ml-auto">共 {convKws.length} 个有转化词（近 13 个月）</span>
+                          )}
+                        </div>
+
+                        {convLoading ? (
+                          <div className="flex items-center justify-center py-16 text-slate-500">
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />拉取历史转化词中...
+                          </div>
+                        ) : !convLoaded ? (
+                          <div className="flex flex-col items-center py-16 text-slate-500 gap-2">
+                            <TrendingUp className="w-8 h-8 opacity-30" />
+                            <p className="text-sm">点击「加载历史转化词」拉取账户 13 个月内有转化的全部搜索词</p>
+                          </div>
+                        ) : convKws.length === 0 ? (
+                          <div className="flex flex-col items-center py-16 text-slate-500 gap-2">
+                            <TrendingUp className="w-8 h-8 opacity-30" />
+                            <p className="text-sm">暂无有转化的历史搜索词</p>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+                            <div className="grid grid-cols-[1fr_60px_70px_70px_60px_70px] gap-3 px-4 py-2.5 text-xs text-slate-500 font-medium border-b"
+                              style={{ background: "var(--color-card-header)", borderColor: "var(--color-border)" }}>
+                              <div>搜索词</div><div>点击</div><div>花费</div><div>转化</div><div>ROAS</div><div>CPA</div>
+                            </div>
+                            {convKws.map((kw, i) => (
+                              <div key={i} className="grid grid-cols-[1fr_60px_70px_70px_60px_70px] gap-3 px-4 py-2.5 border-b items-center text-sm hover:bg-[var(--color-sidebar-accent)]"
+                                style={{ borderColor: "var(--color-border)" }}>
+                                <span className="text-white truncate font-medium">{kw.keyword}</span>
+                                <span className="text-blue-400">{kw.clicks}</span>
+                                <span className="text-amber-400">${kw.cost.toFixed(2)}</span>
+                                <span className="text-emerald-400 font-semibold">{kw.conversions.toFixed(1)}</span>
+                                <span className={kw.roas >= 3 ? "text-emerald-400 font-medium" : kw.roas >= 1 ? "text-amber-400" : "text-red-400"}>
+                                  {kw.roas > 0 ? `${kw.roas}x` : "—"}
+                                </span>
+                                <span className="text-slate-400">{kw.cpa > 0 ? `$${kw.cpa}` : "—"}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* AI 分析结果 */}
