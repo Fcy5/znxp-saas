@@ -449,11 +449,11 @@ async def _ads_search(access_token: str, customer_id: str, query: str) -> list[d
         "developer-token": settings.google_ads_developer_token,
         "Content-Type": "application/json",
     }
-    logging.info(f"Google Ads API request: POST {url}")
-    logging.info(f"developer-token present: {bool(settings.google_ads_developer_token)}, customer_id: {customer_id!r}")
+    logging.error(f"[DEBUG] Google Ads API request: POST {url}")
+    logging.error(f"[DEBUG] developer-token: {settings.google_ads_developer_token[:8]}..., customer_id: {customer_id!r}")
     async with httpx.AsyncClient(trust_env=False, timeout=30) as client:
         resp = await client.post(url, headers=headers, json={"query": query})
-    logging.info(f"Google Ads API response: {resp.status_code}")
+    logging.error(f"[DEBUG] Google Ads API response: {resp.status_code}")
     if resp.status_code == 401:
         raise HTTPException(status_code=401, detail="Google Ads 授权失败，请重新连接 Google 账号")
     if resp.status_code == 403:
