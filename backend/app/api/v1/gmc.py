@@ -24,7 +24,7 @@ router = APIRouter(prefix="/gmc", tags=["Google Merchant Center"])
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 MERCHANT_BASE = "https://merchantapi.googleapis.com/merchant/v1beta"
-SCOPES = "https://www.googleapis.com/auth/content"
+SCOPES = "https://www.googleapis.com/auth/content https://www.googleapis.com/auth/adwords"
 
 
 # ── OAuth helpers ─────────────────────────────────────────────────────────────
