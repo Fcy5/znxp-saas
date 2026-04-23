@@ -53,7 +53,7 @@ interface AdSummary {
 
 type GmcFilter = "all" | "pushed" | "not_pushed"
 type TabType = "products" | "ads"
-type AdsTabType = "terms" | "converting" | "products"
+type AdsTabType = "terms" | "converting" | "products" | "shopping"
 type DaysRange = 7 | 30 | 90
 
 const GMC_STATUS: Record<string, { label: string; color: string; icon?: React.ReactNode }> = {
@@ -106,6 +106,10 @@ function GmcPageInner() {
   const [convLoading, setConvLoading] = useState(false)
   const [convSort, setConvSort] = useState("conversions")
   const [convLoaded, setConvLoaded] = useState(false)
+  // 购物广告系列
+  const [shoppingCampaigns, setShoppingCampaigns] = useState<any[]>([])
+  const [shoppingSummary, setShoppingSummary] = useState<AdSummary | null>(null)
+  const [shoppingLoading, setShoppingLoading] = useState(false)
 
   const PER_PAGE = 20
 
@@ -224,6 +228,16 @@ function GmcPageInner() {
   const toggleSelect = (pid: number) => setSelectedIds(prev => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n })
   const toggleAll = () => setSelectedIds(selectedIds.size === products.length ? new Set() : new Set(products.map(p => p.shopify_product_id)))
   const toggleTerm = (term: string) => setSelectedTerms(prev => { const n = new Set(prev); n.has(term) ? n.delete(term) : n.add(term); return n })
+
+  const loadShoppingCampaigns = async () => {
+    setShoppingLoading(true)
+    try {
+      const res = await request<any>(`/gmc/ads/shopping-campaigns?days=${days}`)
+      setShoppingCampaigns(res.data?.campaigns || [])
+      setShoppingSummary(res.data?.summary || null)
+    } catch (e: any) { showMsg(e.message || "加载失败", "err") }
+    finally { setShoppingLoading(false) }
+  }
 
   const loadConvertingKws = async () => {
     setConvLoading(true)
@@ -467,13 +481,17 @@ function GmcPageInner() {
                     )}
 
                     {/* 子 Tab */}
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                       {([
                         ["terms", Tag, "搜索词报告"],
                         ["converting", TrendingUp, "历史转化词"],
                         ["products", ShoppingCart, "商品维度"],
+                        ["shopping", BarChart2, "购物广告系列"],
                       ] as const).map(([key, Icon, label]) => (
-                        <button key={key} onClick={() => setAdsTab(key as any)}
+                        <button key={key} onClick={() => {
+                          setAdsTab(key as any)
+                          if (key === "shopping") loadShoppingCampaigns()
+                        }}
                           className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${adsTab === key ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-[var(--color-card)] border border-[var(--color-border)]"}`}>
                           <Icon className="w-3.5 h-3.5" />{label}
                         </button>
@@ -645,6 +663,62 @@ function GmcPageInner() {
                             </span>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* 购物广告系列 */}
+                    {adsTab === "shopping" && (
+                      <div className="space-y-3">
+                        {shoppingSummary && (
+                          <div className="grid grid-cols-4 gap-3">
+                            {[
+                              { label: "总点击", value: shoppingSummary.total_clicks.toLocaleString(), icon: <MousePointerClick className="w-4 h-4" />, color: "text-blue-400" },
+                              { label: "总花费", value: `$${shoppingSummary.total_cost.toFixed(2)}`, icon: <DollarSign className="w-4 h-4" />, color: "text-amber-400" },
+                              { label: "总转化", value: shoppingSummary.total_conversions.toFixed(1), icon: <CheckCircle2 className="w-4 h-4" />, color: "text-emerald-400" },
+                              { label: "整体 ROAS", value: `${shoppingSummary.avg_roas}x`, icon: <TrendingUp className="w-4 h-4" />, color: shoppingSummary.avg_roas >= 3 ? "text-emerald-400" : shoppingSummary.avg_roas >= 1 ? "text-amber-400" : "text-red-400" },
+                            ].map(card => (
+                              <div key={card.label} className="rounded-xl border p-4" style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                                <div className={`flex items-center gap-2 mb-2 ${card.color}`}>
+                                  {card.icon}<span className="text-xs text-slate-400">{card.label}</span>
+                                </div>
+                                <p className={`text-xl font-bold ${card.color}`}>{card.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+                          <div className="grid grid-cols-[1fr_80px_60px_70px_70px_70px_60px] gap-3 px-4 py-2.5 text-xs text-slate-500 font-medium border-b"
+                            style={{ background: "var(--color-card-header)", borderColor: "var(--color-border)" }}>
+                            <div>广告系列</div><div>类型</div><div>点击</div><div>展示量</div><div>CTR</div><div>花费</div><div>ROAS</div>
+                          </div>
+                          {shoppingLoading ? (
+                            <div className="flex items-center justify-center py-16 text-slate-500">
+                              <Loader2 className="w-5 h-5 animate-spin mr-2" />加载中...
+                            </div>
+                          ) : shoppingCampaigns.length === 0 ? (
+                            <div className="flex flex-col items-center py-12 text-slate-500 gap-2">
+                              <BarChart2 className="w-7 h-7 opacity-30" /><p className="text-sm">暂无购物广告系列数据</p>
+                            </div>
+                          ) : shoppingCampaigns.map((c, i) => (
+                            <div key={i} className="grid grid-cols-[1fr_80px_60px_70px_70px_70px_60px] gap-3 px-4 py-3 border-b items-center text-sm hover:bg-[var(--color-sidebar-accent)]"
+                              style={{ borderColor: "var(--color-border)" }}>
+                              <div className="min-w-0">
+                                <p className="text-white truncate font-medium">{c.name}</p>
+                                <span className={`text-xs px-1.5 py-0.5 rounded mt-0.5 inline-block ${c.status === "ENABLED" ? "text-emerald-400 bg-emerald-500/10" : "text-slate-400 bg-slate-700/40"}`}>
+                                  {c.status === "ENABLED" ? "投放中" : c.status === "PAUSED" ? "已暂停" : c.status}
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-400">{c.type === "PERFORMANCE_MAX" ? "PMax" : "购物"}</span>
+                              <span className="text-blue-400 font-medium">{c.clicks}</span>
+                              <span className="text-slate-400">{c.impressions.toLocaleString()}</span>
+                              <span className="text-slate-300">{c.ctr}%</span>
+                              <span className="text-amber-400">${c.cost.toFixed(2)}</span>
+                              <span className={c.roas >= 3 ? "text-emerald-400 font-medium" : c.roas >= 1 ? "text-amber-400" : "text-red-400"}>
+                                {c.roas > 0 ? `${c.roas}x` : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </>

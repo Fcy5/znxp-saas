@@ -573,6 +573,77 @@ async def get_product_performance(
     return Response(data={"products": products})
 
 
+# ── 广告数据：购物广告系列表现 ────────────────────────────────────────────────
+
+@router.get("/ads/shopping-campaigns")
+async def get_shopping_campaigns(
+    current_user_id: CurrentUser,
+    db: DBSession,
+    days: int = Query(30, ge=7, le=90),
+):
+    """获取 Shopping / Performance Max 广告系列维度数据"""
+    access_token = await _get_valid_access_token(db, current_user_id)
+    customer_id = settings.google_ads_customer_id
+
+    query = f"""
+        SELECT
+            campaign.name,
+            campaign.advertising_channel_type,
+            campaign.status,
+            metrics.clicks,
+            metrics.impressions,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.conversions_value
+        FROM campaign
+        WHERE campaign.advertising_channel_type IN ('SHOPPING', 'PERFORMANCE_MAX')
+          AND segments.date DURING LAST_{days}_DAYS
+          AND metrics.impressions > 0
+        ORDER BY metrics.cost_micros DESC
+        LIMIT 50
+    """
+    results = await _ads_search(access_token, customer_id, query)
+
+    campaigns = []
+    for r in results:
+        c = r.get("campaign", {})
+        m = r.get("metrics", {})
+        cost = int(m.get("costMicros", 0)) / 1_000_000
+        conv_value = float(m.get("conversionsValue", 0))
+        clicks = int(m.get("clicks", 0))
+        impressions = int(m.get("impressions", 0))
+        conversions = float(m.get("conversions", 0))
+        roas = round(conv_value / cost, 2) if cost > 0 else 0
+        ctr = round(clicks / impressions * 100, 2) if impressions > 0 else 0
+        campaigns.append({
+            "name": c.get("name", ""),
+            "type": c.get("advertisingChannelType", ""),
+            "status": c.get("status", ""),
+            "clicks": clicks,
+            "impressions": impressions,
+            "ctr": ctr,
+            "cost": round(cost, 2),
+            "conversions": conversions,
+            "roas": roas,
+        })
+
+    total_cost = sum(c["cost"] for c in campaigns)
+    total_clicks = sum(c["clicks"] for c in campaigns)
+    total_conv = sum(c["conversions"] for c in campaigns)
+    total_conv_value = sum(float(r.get("metrics", {}).get("conversionsValue", 0)) for r in results)
+    avg_roas = round(total_conv_value / total_cost, 2) if total_cost > 0 else 0
+
+    return Response(data={
+        "campaigns": campaigns,
+        "summary": {
+            "total_clicks": total_clicks,
+            "total_cost": round(total_cost, 2),
+            "total_conversions": round(total_conv, 2),
+            "avg_roas": avg_roas,
+        },
+    })
+
+
 # ── 广告数据：添加否定关键词 ──────────────────────────────────────────────────
 
 class NegativeKeywordRequest(BaseModel):
