@@ -459,6 +459,8 @@ async def _ads_search(access_token: str, customer_id: str, query: str) -> list[d
         detail = resp.json().get("error", {}).get("message", resp.text[:200])
         raise HTTPException(status_code=403, detail=f"Google Ads API 权限不足: {detail}")
     if resp.status_code not in (200, 201):
+        import logging
+        logging.error(f"Google Ads API error {resp.status_code}: {resp.text[:500]}")
         raise HTTPException(status_code=400, detail=f"Google Ads API 错误: {resp.text[:300]}")
     return resp.json().get("results", [])
 
