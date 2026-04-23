@@ -121,7 +121,7 @@ async def get_oauth_url(current_user_id: CurrentUser):
 async def oauth_callback(
     code: str = Query(...),
     state: str = Query(...),
-    db: DBSession = None,
+    db: DBSession = None,  # noqa - FastAPI injects via Annotated[..., Depends]
 ):
     """Google OAuth 回调，交换 code 换 tokens"""
     user_id = int(state)
@@ -135,8 +135,10 @@ async def oauth_callback(
             "grant_type": "authorization_code",
         })
 
+    frontend = "https://znxp-sass.vqmjc.cc" if settings.app_env == "production" else "http://localhost:3000"
+
     if resp.status_code != 200:
-        return RedirectResponse(url="/gmc?error=oauth_failed")
+        return RedirectResponse(url=f"{frontend}/gmc?error=oauth_failed")
 
     data = resp.json()
     await _save_tokens(
@@ -145,7 +147,7 @@ async def oauth_callback(
         data.get("refresh_token", ""),
         data.get("expires_in", 3600),
     )
-    return RedirectResponse(url="/gmc?connected=1")
+    return RedirectResponse(url=f"{frontend}/gmc?connected=1")
 
 
 @router.get("/status")
@@ -431,3 +433,210 @@ async def sync_gmc_status(
 
     await db.commit()
     return Response(data={"updated": updated}, message=f"同步完成，更新 {updated} 条状态")
+
+
+# ── Google Ads API helpers ────────────────────────────────────────────────────
+
+ADS_BASE = "https://googleads.googleapis.com/v17"
+
+
+async def _ads_search(access_token: str, customer_id: str, query: str) -> list[dict]:
+    """执行 GAQL 查询，返回 results 列表"""
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "developer-token": settings.google_ads_developer_token,
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(trust_env=False, timeout=30) as client:
+        resp = await client.post(
+            f"{ADS_BASE}/customers/{customer_id}/googleAds:search",
+            headers=headers,
+            json={"query": query},
+        )
+    if resp.status_code == 401:
+        raise HTTPException(status_code=401, detail="Google Ads 授权失败，请重新连接 Google 账号")
+    if resp.status_code == 403:
+        detail = resp.json().get("error", {}).get("message", resp.text[:200])
+        raise HTTPException(status_code=403, detail=f"Google Ads API 权限不足: {detail}")
+    if resp.status_code not in (200, 201):
+        raise HTTPException(status_code=400, detail=f"Google Ads API 错误: {resp.text[:300]}")
+    return resp.json().get("results", [])
+
+
+# ── 广告数据：购物广告搜索词报告 ─────────────────────────────────────────────
+
+@router.get("/ads/search-terms")
+async def get_search_terms(
+    current_user_id: CurrentUser,
+    db: DBSession,
+    days: int = Query(30, ge=7, le=90),
+):
+    """获取购物广告搜索词报告（最近 N 天）"""
+    access_token = await _get_valid_access_token(db, current_user_id)
+    customer_id = settings.google_ads_customer_id
+
+    query = f"""
+        SELECT
+            search_term_view.search_term,
+            metrics.clicks,
+            metrics.impressions,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.conversions_value
+        FROM search_term_view
+        WHERE segments.date DURING LAST_{days}_DAYS
+          AND metrics.impressions > 0
+        ORDER BY metrics.clicks DESC
+        LIMIT 100
+    """
+    results = await _ads_search(access_token, customer_id, query)
+
+    terms = []
+    for r in results:
+        stv = r.get("searchTermView", {})
+        m = r.get("metrics", {})
+        cost = int(m.get("costMicros", 0)) / 1_000_000
+        conv_value = float(m.get("conversionsValue", 0))
+        clicks = int(m.get("clicks", 0))
+        roas = round(conv_value / cost, 2) if cost > 0 else 0
+        terms.append({
+            "search_term": stv.get("searchTerm", ""),
+            "clicks": clicks,
+            "impressions": int(m.get("impressions", 0)),
+            "cost": round(cost, 2),
+            "conversions": float(m.get("conversions", 0)),
+            "roas": roas,
+        })
+
+    total_cost = sum(t["cost"] for t in terms)
+    total_clicks = sum(t["clicks"] for t in terms)
+    total_conv = sum(t["conversions"] for t in terms)
+    total_roas = round(sum(t["roas"] for t in terms if t["roas"] > 0) / max(len([t for t in terms if t["roas"] > 0]), 1), 2)
+
+    return Response(data={
+        "terms": terms,
+        "summary": {
+            "total_clicks": total_clicks,
+            "total_cost": round(total_cost, 2),
+            "total_conversions": round(total_conv, 2),
+            "avg_roas": total_roas,
+        }
+    })
+
+
+# ── 广告数据：购物广告商品维度表现 ───────────────────────────────────────────
+
+@router.get("/ads/product-performance")
+async def get_product_performance(
+    current_user_id: CurrentUser,
+    db: DBSession,
+    days: int = Query(30, ge=7, le=90),
+):
+    """获取购物广告各商品点击/花费/转化数据"""
+    access_token = await _get_valid_access_token(db, current_user_id)
+    customer_id = settings.google_ads_customer_id
+
+    query = f"""
+        SELECT
+            segments.product_title,
+            segments.product_item_id,
+            metrics.clicks,
+            metrics.impressions,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.conversions_value
+        FROM shopping_performance_view
+        WHERE segments.date DURING LAST_{days}_DAYS
+          AND metrics.impressions > 0
+        ORDER BY metrics.clicks DESC
+        LIMIT 50
+    """
+    results = await _ads_search(access_token, customer_id, query)
+
+    products = []
+    for r in results:
+        seg = r.get("segments", {})
+        m = r.get("metrics", {})
+        cost = int(m.get("costMicros", 0)) / 1_000_000
+        conv_value = float(m.get("conversionsValue", 0))
+        roas = round(conv_value / cost, 2) if cost > 0 else 0
+        products.append({
+            "title": seg.get("productTitle", ""),
+            "item_id": seg.get("productItemId", ""),
+            "clicks": int(m.get("clicks", 0)),
+            "impressions": int(m.get("impressions", 0)),
+            "cost": round(cost, 2),
+            "conversions": float(m.get("conversions", 0)),
+            "roas": roas,
+        })
+
+    return Response(data={"products": products})
+
+
+# ── 广告数据：添加否定关键词 ──────────────────────────────────────────────────
+
+class NegativeKeywordRequest(BaseModel):
+    keywords: list[str]
+    campaign_id: str | None = None
+
+
+@router.post("/ads/negative-keywords")
+async def add_negative_keywords(
+    body: NegativeKeywordRequest,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    """在购物广告系列添加否定关键词（精确匹配）"""
+    if not body.keywords:
+        raise HTTPException(status_code=400, detail="关键词列表不能为空")
+
+    access_token = await _get_valid_access_token(db, current_user_id)
+    customer_id = settings.google_ads_customer_id
+
+    # 先查所有购物广告系列
+    if not body.campaign_id:
+        campaigns = await _ads_search(access_token, customer_id, """
+            SELECT campaign.id, campaign.name
+            FROM campaign
+            WHERE campaign.advertising_channel_type = 'SHOPPING'
+              AND campaign.status = 'ENABLED'
+            LIMIT 10
+        """)
+        if not campaigns:
+            raise HTTPException(status_code=404, detail="未找到启用中的购物广告系列")
+        campaign_id = str(campaigns[0]["campaign"]["id"])
+        campaign_name = campaigns[0]["campaign"]["name"]
+    else:
+        campaign_id = body.campaign_id
+        campaign_name = f"Campaign {campaign_id}"
+
+    # 批量添加否定关键词
+    operations = []
+    for kw in body.keywords:
+        operations.append({
+            "create": {
+                "campaign": f"customers/{customer_id}/campaigns/{campaign_id}",
+                "matchType": "EXACT",
+                "keywordText": kw.strip().lower(),
+            }
+        })
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "developer-token": settings.google_ads_developer_token,
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(trust_env=False, timeout=30) as client:
+        resp = await client.post(
+            f"{ADS_BASE}/customers/{customer_id}/campaignNegativeKeywords:mutate",
+            headers=headers,
+            json={"operations": operations},
+        )
+
+    if resp.status_code not in (200, 201):
+        raise HTTPException(status_code=400, detail=f"添加失败: {resp.text[:200]}")
+
+    return Response(
+        data={"added": len(body.keywords), "campaign": campaign_name},
+        message=f"已向「{campaign_name}」添加 {len(body.keywords)} 个否定关键词"
+    )

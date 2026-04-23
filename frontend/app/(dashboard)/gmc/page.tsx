@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input"
 import { request, shopApi, type Shop } from "@/lib/api"
 import {
   ShoppingCart, Link2, RefreshCw, Search, ChevronLeft, ChevronRight,
-  CheckCircle2, Clock, XCircle, Loader2, AlertCircle, ExternalLink,
+  CheckCircle2, Clock, XCircle, Loader2, AlertCircle, TrendingUp,
+  BarChart2, Tag, MinusCircle, ExternalLink, DollarSign, MousePointerClick,
 } from "lucide-react"
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface GmcProduct {
   shopify_product_id: number
@@ -22,21 +25,59 @@ interface GmcProduct {
   published_at: string | null
 }
 
-type GmcFilter = "all" | "pushed" | "not_pushed"
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  not_pushed: { label: "未推送", color: "text-slate-400 bg-slate-700/40", icon: null },
-  pending:    { label: "审核中", color: "text-amber-400 bg-amber-500/10", icon: <Clock className="w-3 h-3" /> },
-  approved:   { label: "已批准", color: "text-emerald-400 bg-emerald-500/10", icon: <CheckCircle2 className="w-3 h-3" /> },
-  disapproved:{ label: "已拒绝", color: "text-red-400 bg-red-500/10", icon: <XCircle className="w-3 h-3" /> },
+interface SearchTerm {
+  search_term: string
+  clicks: number
+  impressions: number
+  cost: number
+  conversions: number
+  roas: number
 }
+
+interface AdProduct {
+  title: string
+  item_id: string
+  clicks: number
+  impressions: number
+  cost: number
+  conversions: number
+  roas: number
+}
+
+interface AdSummary {
+  total_clicks: number
+  total_cost: number
+  total_conversions: number
+  avg_roas: number
+}
+
+type GmcFilter = "all" | "pushed" | "not_pushed"
+type TabType = "products" | "ads"
+type DaysRange = 7 | 30 | 90
+
+const GMC_STATUS: Record<string, { label: string; color: string; icon?: React.ReactNode }> = {
+  not_pushed:  { label: "未推送",  color: "text-slate-400 bg-slate-700/40" },
+  pending:     { label: "审核中",  color: "text-amber-400 bg-amber-500/10",   icon: <Clock className="w-3 h-3" /> },
+  approved:    { label: "已批准",  color: "text-emerald-400 bg-emerald-500/10", icon: <CheckCircle2 className="w-3 h-3" /> },
+  disapproved: { label: "已拒绝",  color: "text-red-400 bg-red-500/10",      icon: <XCircle className="w-3 h-3" /> },
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function GmcPage() {
   const searchParams = useSearchParams()
+
+  // shared
   const [shops, setShops] = useState<Shop[]>([])
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
   const [connected, setConnected] = useState(false)
   const [datasourceReady, setDatasourceReady] = useState(false)
+  const [tab, setTab] = useState<TabType>("products")
+  const [msg, setMsg] = useState("")
+  const [msgType, setMsgType] = useState<"ok" | "err">("ok")
+  const [setupLoading, setSetupLoading] = useState(false)
+
+  // products tab
   const [products, setProducts] = useState<GmcProduct[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -46,9 +87,18 @@ export default function GmcPage() {
   const [loading, setLoading] = useState(false)
   const [pushing, setPushing] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [setupLoading, setSetupLoading] = useState(false)
-  const [msg, setMsg] = useState("")
-  const [msgType, setMsgType] = useState<"ok" | "err">("ok")
+
+  // ads tab
+  const [days, setDays] = useState<DaysRange>(30)
+  const [adsLoading, setAdsLoading] = useState(false)
+  const [summary, setSummary] = useState<AdSummary | null>(null)
+  const [searchTerms, setSearchTerms] = useState<SearchTerm[]>([])
+  const [adProducts, setAdProducts] = useState<AdProduct[]>([])
+  const [adsTab, setAdsTab] = useState<"terms" | "products">("terms")
+  const [negKw, setNegKw] = useState("")
+  const [addingNeg, setAddingNeg] = useState(false)
+  const [selectedTerms, setSelectedTerms] = useState<Set<string>>(new Set())
+
   const PER_PAGE = 20
 
   const showMsg = (text: string, type: "ok" | "err" = "ok") => {
@@ -56,13 +106,13 @@ export default function GmcPage() {
     setTimeout(() => setMsg(""), 4000)
   }
 
-  // OAuth 回调提示
+  // OAuth callback hints
   useEffect(() => {
-    if (searchParams.get("connected") === "1") showMsg("Google 账号连接成功！")
+    if (searchParams.get("connected") === "1") { showMsg("Google 账号连接成功！"); setConnected(true) }
     if (searchParams.get("error")) showMsg("Google 授权失败，请重试", "err")
   }, [searchParams])
 
-  // 加载店铺 + 连接状态
+  // Load shops + connection status
   useEffect(() => {
     shopApi.list().then(res => {
       const list = res.data || []
@@ -75,6 +125,7 @@ export default function GmcPage() {
     }).catch(() => {})
   }, [])
 
+  // Load products
   const loadProducts = useCallback(async () => {
     if (!selectedShopId) return
     setLoading(true)
@@ -84,14 +135,29 @@ export default function GmcPage() {
       )
       setProducts(res.data?.products || [])
       setTotal(res.data?.total || 0)
-    } catch (e: any) {
-      showMsg(e.message || "加载失败", "err")
-    } finally {
-      setLoading(false)
-    }
+    } catch (e: any) { showMsg(e.message || "加载失败", "err") }
+    finally { setLoading(false) }
   }, [selectedShopId, q, filter, page])
 
-  useEffect(() => { loadProducts() }, [loadProducts])
+  useEffect(() => { if (tab === "products") loadProducts() }, [loadProducts, tab])
+
+  // Load ads data
+  const loadAds = useCallback(async () => {
+    if (!connected) return
+    setAdsLoading(true)
+    try {
+      const [termsRes, prodRes] = await Promise.all([
+        request<any>(`/gmc/ads/search-terms?days=${days}`),
+        request<any>(`/gmc/ads/product-performance?days=${days}`),
+      ])
+      setSearchTerms(termsRes.data?.terms || [])
+      setSummary(termsRes.data?.summary || null)
+      setAdProducts(prodRes.data?.products || [])
+    } catch (e: any) { showMsg(e.message || "广告数据加载失败", "err") }
+    finally { setAdsLoading(false) }
+  }, [connected, days])
+
+  useEffect(() => { if (tab === "ads") loadAds() }, [loadAds, tab])
 
   const handleConnect = async () => {
     const res = await request<any>("/gmc/oauth/url")
@@ -104,11 +170,8 @@ export default function GmcPage() {
       const res = await request<any>("/gmc/setup-datasource", { method: "POST", body: JSON.stringify({}) })
       setDatasourceReady(true)
       showMsg(res.message || "Data Source 初始化成功")
-    } catch (e: any) {
-      showMsg(e.message || "初始化失败", "err")
-    } finally {
-      setSetupLoading(false)
-    }
+    } catch (e: any) { showMsg(e.message || "初始化失败", "err") }
+    finally { setSetupLoading(false) }
   }
 
   const handlePush = async () => {
@@ -117,53 +180,42 @@ export default function GmcPage() {
     try {
       const res = await request<any>("/gmc/push", {
         method: "POST",
-        body: JSON.stringify({
-          shop_id: selectedShopId,
-          shopify_product_ids: Array.from(selectedIds).map(String),
-        }),
+        body: JSON.stringify({ shop_id: selectedShopId, shopify_product_ids: Array.from(selectedIds).map(String) }),
       })
       showMsg(res.message || "推送完成")
       setSelectedIds(new Set())
       loadProducts()
-    } catch (e: any) {
-      showMsg(e.message || "推送失败", "err")
-    } finally {
-      setPushing(false)
-    }
+    } catch (e: any) { showMsg(e.message || "推送失败", "err") }
+    finally { setPushing(false) }
   }
 
   const handleSyncStatus = async () => {
     setSyncing(true)
     try {
-      const res = await request<any>("/gmc/sync-status", {
-        method: "POST",
-        body: JSON.stringify({ shop_id: selectedShopId }),
-      })
+      const res = await request<any>("/gmc/sync-status", { method: "POST", body: JSON.stringify({ shop_id: selectedShopId }) })
       showMsg(res.message || "同步完成")
       loadProducts()
-    } catch (e: any) {
-      showMsg(e.message || "同步失败", "err")
-    } finally {
-      setSyncing(false)
-    }
+    } catch (e: any) { showMsg(e.message || "同步失败", "err") }
+    finally { setSyncing(false) }
   }
 
-  const toggleSelect = (pid: number) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      next.has(pid) ? next.delete(pid) : next.add(pid)
-      return next
-    })
+  const handleAddNegative = async () => {
+    const kws = negKw.split(/[\n,]/).map(k => k.trim()).filter(Boolean)
+    if (selectedTerms.size === 0 && kws.length === 0) return showMsg("请输入关键词或选择搜索词", "err")
+    const all = [...new Set([...kws, ...Array.from(selectedTerms)])]
+    setAddingNeg(true)
+    try {
+      const res = await request<any>("/gmc/ads/negative-keywords", { method: "POST", body: JSON.stringify({ keywords: all }) })
+      showMsg(res.message || "添加成功")
+      setNegKw("")
+      setSelectedTerms(new Set())
+    } catch (e: any) { showMsg(e.message || "添加失败", "err") }
+    finally { setAddingNeg(false) }
   }
 
-  const toggleAll = () => {
-    if (selectedIds.size === products.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(products.map(p => p.shopify_product_id)))
-    }
-  }
-
+  const toggleSelect = (pid: number) => setSelectedIds(prev => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n })
+  const toggleAll = () => setSelectedIds(selectedIds.size === products.length ? new Set() : new Set(products.map(p => p.shopify_product_id)))
+  const toggleTerm = (term: string) => setSelectedTerms(prev => { const n = new Set(prev); n.has(term) ? n.delete(term) : n.add(term); return n })
   const totalPages = Math.ceil(total / PER_PAGE)
 
   return (
@@ -180,19 +232,15 @@ export default function GmcPage() {
           </div>
         )}
 
-        {/* 连接状态卡片 */}
+        {/* 连接状态 */}
         <div className="rounded-xl border p-4 flex items-center gap-4" style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${connected ? "bg-emerald-500/10" : "bg-slate-700"}`}>
             <ShoppingCart className={`w-5 h-5 ${connected ? "text-emerald-400" : "text-slate-500"}`} />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-white">
-              {connected ? "已连接 Google 账号" : "未连接 Google 账号"}
-            </p>
+            <p className="text-sm font-medium text-white">{connected ? "已连接 Google 账号" : "未连接 Google 账号"}</p>
             <p className="text-xs text-slate-400 mt-0.5">
-              {connected
-                ? datasourceReady ? "Data Source 已就绪，可以推送商品" : "需要初始化 Data Source"
-                : "连接后可将 Shopify 商品一键推送到 GMC 购物广告"}
+              {connected ? datasourceReady ? "Data Source 就绪，可推送商品 + 查看广告数据" : "需要初始化 Data Source" : "连接后可推送商品到 GMC 并查看广告数据"}
             </p>
           </div>
           <div className="flex gap-2">
@@ -215,170 +263,273 @@ export default function GmcPage() {
           </div>
         </div>
 
-        {/* 工具栏 */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* 店铺选择 */}
-          <select
-            value={selectedShopId || ""}
-            onChange={e => { setSelectedShopId(Number(e.target.value)); setPage(1) }}
-            className="text-sm bg-[var(--color-card)] border border-[var(--color-border)] text-white rounded-lg px-3 py-2 outline-none"
-          >
-            {shops.map(s => <option key={s.id} value={s.id}>{s.name || s.domain}</option>)}
-          </select>
-
-          {/* 搜索 */}
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <Input
-              value={q}
-              onChange={e => { setQ(e.target.value); setPage(1) }}
-              placeholder="搜索商品..."
-              className="pl-9 text-sm bg-[var(--color-card)] border-[var(--color-border)] text-white"
-            />
-          </div>
-
-          {/* GMC 状态筛选 */}
-          <div className="flex gap-1">
-            {(["all", "not_pushed", "pushed"] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => { setFilter(f); setPage(1) }}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${filter === f ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-[var(--color-card)] border border-[var(--color-border)]"}`}
-              >
-                {f === "all" ? "全部" : f === "not_pushed" ? "未推送" : "已推送"}
-              </button>
-            ))}
-          </div>
-
-          <div className="ml-auto flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSyncStatus}
-              disabled={syncing || !connected}
-              className="gap-1.5 text-xs border-[var(--color-border)] text-slate-300"
+        {/* Tab 切换 */}
+        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
+          {([["products", ShoppingCart, "商品推送"], ["ads", BarChart2, "广告数据"]] as const).map(([key, Icon, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-              同步状态
-            </Button>
-            <Button
-              size="sm"
-              onClick={handlePush}
-              disabled={pushing || selectedIds.size === 0 || !datasourceReady}
-              className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {pushing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingCart className="w-3.5 h-3.5" />}
-              推送到 GMC {selectedIds.size > 0 && `(${selectedIds.size})`}
-            </Button>
-          </div>
+              <Icon className="w-4 h-4" />{label}
+            </button>
+          ))}
         </div>
 
-        {/* 商品列表 */}
-        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
-          {/* 表头 */}
-          <div className="grid grid-cols-[40px_56px_1fr_80px_80px_110px_40px] gap-3 px-4 py-2.5 text-xs text-slate-500 font-medium border-b" style={{ background: "var(--color-card-header)", borderColor: "var(--color-border)" }}>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                checked={products.length > 0 && selectedIds.size === products.length}
-                onChange={toggleAll}
-                className="w-3.5 h-3.5 accent-blue-500"
-              />
+        {/* ── 商品推送 Tab ── */}
+        {tab === "products" && (
+          <>
+            {/* 工具栏 */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <select value={selectedShopId || ""} onChange={e => { setSelectedShopId(Number(e.target.value)); setPage(1) }}
+                className="text-sm bg-[var(--color-card)] border border-[var(--color-border)] text-white rounded-lg px-3 py-2 outline-none">
+                {shops.map(s => <option key={s.id} value={s.id}>{s.name || s.domain}</option>)}
+              </select>
+              <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="搜索商品..."
+                  className="pl-9 text-sm bg-[var(--color-card)] border-[var(--color-border)] text-white" />
+              </div>
+              <div className="flex gap-1">
+                {(["all", "not_pushed", "pushed"] as const).map(f => (
+                  <button key={f} onClick={() => { setFilter(f); setPage(1) }}
+                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${filter === f ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-[var(--color-card)] border border-[var(--color-border)]"}`}>
+                    {f === "all" ? "全部" : f === "not_pushed" ? "未推送" : "已推送"}
+                  </button>
+                ))}
+              </div>
+              <div className="ml-auto flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleSyncStatus} disabled={syncing || !connected}
+                  className="gap-1.5 text-xs border-[var(--color-border)] text-slate-300">
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />同步状态
+                </Button>
+                <Button size="sm" onClick={handlePush} disabled={pushing || selectedIds.size === 0 || !datasourceReady}
+                  className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white">
+                  {pushing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+                  推送到 GMC {selectedIds.size > 0 && `(${selectedIds.size})`}
+                </Button>
+              </div>
             </div>
-            <div />
-            <div>商品名称</div>
-            <div>价格</div>
-            <div>状态</div>
-            <div>GMC 状态</div>
-            <div />
-          </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-500">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />加载中...
-            </div>
-          ) : products.length === 0 ? (
-            <div className="flex flex-col items-center py-16 text-slate-500 gap-2">
-              <ShoppingCart className="w-8 h-8 opacity-30" />
-              <p className="text-sm">暂无商品，请先同步 Shopify 商品缓存</p>
-            </div>
-          ) : (
-            products.map(p => {
-              const gmcCfg = STATUS_CONFIG[p.gmc_status] || STATUS_CONFIG["not_pushed"]
-              const isSelected = selectedIds.has(p.shopify_product_id)
-              return (
-                <div
-                  key={p.shopify_product_id}
-                  onClick={() => toggleSelect(p.shopify_product_id)}
-                  className={`grid grid-cols-[40px_56px_1fr_80px_80px_110px_40px] gap-3 px-4 py-3 border-b items-center cursor-pointer transition-colors ${isSelected ? "bg-blue-500/5" : "hover:bg-[var(--color-sidebar-accent)]"}`}
-                  style={{ borderColor: "var(--color-border)" }}
-                >
-                  <div onClick={e => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelect(p.shopify_product_id)}
-                      className="w-3.5 h-3.5 accent-blue-500"
-                    />
-                  </div>
-                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-slate-800 shrink-0">
-                    {p.image_url
-                      ? <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center"><ShoppingCart className="w-4 h-4 text-slate-600" /></div>
-                    }
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-white truncate font-medium">{p.title}</p>
-                    {p.handle && (
-                      <p className="text-xs text-slate-500 truncate mt-0.5">{p.handle}</p>
-                    )}
-                  </div>
-                  <div className="text-sm text-white font-medium">
-                    {p.price ? `$${p.price}` : "—"}
-                  </div>
-                  <div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-700 text-slate-400"}`}>
-                      {p.status === "active" ? "上架" : p.status === "draft" ? "草稿" : p.status}
-                    </span>
-                  </div>
-                  <div>
-                    <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit ${gmcCfg.color}`}>
-                      {gmcCfg.icon}
-                      {gmcCfg.label}
-                    </span>
-                  </div>
-                  <div onClick={e => e.stopPropagation()}>
-                    {p.handle && (
-                      <a
-                        href={`https://${p.handle}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-slate-500 hover:text-white transition-colors"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
+            {/* 商品列表 */}
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+              <div className="grid grid-cols-[40px_56px_1fr_80px_80px_110px] gap-3 px-4 py-2.5 text-xs text-slate-500 font-medium border-b"
+                style={{ background: "var(--color-card-header)", borderColor: "var(--color-border)" }}>
+                <div><input type="checkbox" checked={products.length > 0 && selectedIds.size === products.length}
+                  onChange={toggleAll} className="w-3.5 h-3.5 accent-blue-500" /></div>
+                <div /><div>商品名称</div><div>价格</div><div>状态</div><div>GMC 状态</div>
+              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" />加载中...</div>
+              ) : products.length === 0 ? (
+                <div className="flex flex-col items-center py-16 text-slate-500 gap-2">
+                  <ShoppingCart className="w-8 h-8 opacity-30" /><p className="text-sm">暂无商品，请先同步 Shopify 缓存</p>
                 </div>
-              )
-            })
-          )}
-        </div>
-
-        {/* 分页 */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-1">
-            <p className="text-xs text-slate-500">共 {total} 件商品</p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-7 w-7 p-0 border-[var(--color-border)]">
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </Button>
-              <span className="text-xs text-slate-400">{page} / {totalPages}</span>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="h-7 w-7 p-0 border-[var(--color-border)]">
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
+              ) : products.map(p => {
+                const cfg = GMC_STATUS[p.gmc_status] || GMC_STATUS["not_pushed"]
+                const sel = selectedIds.has(p.shopify_product_id)
+                return (
+                  <div key={p.shopify_product_id} onClick={() => toggleSelect(p.shopify_product_id)}
+                    className={`grid grid-cols-[40px_56px_1fr_80px_80px_110px] gap-3 px-4 py-3 border-b items-center cursor-pointer transition-colors ${sel ? "bg-blue-500/5" : "hover:bg-[var(--color-sidebar-accent)]"}`}
+                    style={{ borderColor: "var(--color-border)" }}>
+                    <div onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={sel} onChange={() => toggleSelect(p.shopify_product_id)} className="w-3.5 h-3.5 accent-blue-500" />
+                    </div>
+                    <div className="w-11 h-11 rounded-lg overflow-hidden bg-slate-800 shrink-0">
+                      {p.image_url ? <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center"><ShoppingCart className="w-4 h-4 text-slate-600" /></div>}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-white truncate font-medium">{p.title}</p>
+                      {p.handle && <p className="text-xs text-slate-500 truncate mt-0.5">{p.handle}</p>}
+                    </div>
+                    <div className="text-sm text-white font-medium">{p.price ? `$${p.price}` : "—"}</div>
+                    <div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-700 text-slate-400"}`}>
+                        {p.status === "active" ? "上架" : p.status === "draft" ? "草稿" : p.status}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit ${cfg.color}`}>
+                        {cfg.icon}{cfg.label}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-1">
+                <p className="text-xs text-slate-500">共 {total} 件商品</p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-7 w-7 p-0 border-[var(--color-border)]">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  <span className="text-xs text-slate-400">{page} / {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="h-7 w-7 p-0 border-[var(--color-border)]">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── 广告数据 Tab ── */}
+        {tab === "ads" && (
+          <>
+            {!connected ? (
+              <div className="flex flex-col items-center py-20 gap-3 text-slate-500">
+                <BarChart2 className="w-10 h-10 opacity-30" />
+                <p className="text-sm">请先连接 Google 账号</p>
+              </div>
+            ) : (
+              <>
+                {/* 时间范围 + 刷新 */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400">时间范围：</span>
+                  {([7, 30, 90] as const).map(d => (
+                    <button key={d} onClick={() => setDays(d)}
+                      className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${days === d ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-[var(--color-card)] border border-[var(--color-border)]"}`}>
+                      近 {d} 天
+                    </button>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={loadAds} disabled={adsLoading}
+                    className="ml-auto gap-1.5 text-xs border-[var(--color-border)] text-slate-300">
+                    <RefreshCw className={`w-3.5 h-3.5 ${adsLoading ? "animate-spin" : ""}`} />刷新
+                  </Button>
+                </div>
+
+                {adsLoading ? (
+                  <div className="flex items-center justify-center py-20 text-slate-500">
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />加载广告数据中...
+                  </div>
+                ) : (
+                  <>
+                    {/* 汇总卡片 */}
+                    {summary && (
+                      <div className="grid grid-cols-4 gap-3">
+                        {[
+                          { label: "总点击", value: summary.total_clicks.toLocaleString(), icon: <MousePointerClick className="w-4 h-4" />, color: "text-blue-400" },
+                          { label: "总花费", value: `$${summary.total_cost.toFixed(2)}`, icon: <DollarSign className="w-4 h-4" />, color: "text-amber-400" },
+                          { label: "总转化", value: summary.total_conversions.toFixed(1), icon: <CheckCircle2 className="w-4 h-4" />, color: "text-emerald-400" },
+                          { label: "平均 ROAS", value: `${summary.avg_roas}x`, icon: <TrendingUp className="w-4 h-4" />, color: summary.avg_roas >= 3 ? "text-emerald-400" : summary.avg_roas >= 1 ? "text-amber-400" : "text-red-400" },
+                        ].map(card => (
+                          <div key={card.label} className="rounded-xl border p-4" style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                            <div className={`flex items-center gap-2 mb-2 ${card.color}`}>
+                              {card.icon}
+                              <span className="text-xs text-slate-400">{card.label}</span>
+                            </div>
+                            <p className={`text-xl font-bold ${card.color}`}>{card.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 子 Tab：搜索词 / 商品维度 */}
+                    <div className="flex gap-1">
+                      {([["terms", Tag, "搜索词报告"], ["products", ShoppingCart, "商品维度"]] as const).map(([key, Icon, label]) => (
+                        <button key={key} onClick={() => setAdsTab(key)}
+                          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${adsTab === key ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-[var(--color-card)] border border-[var(--color-border)]"}`}>
+                          <Icon className="w-3.5 h-3.5" />{label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* 搜索词报告 */}
+                    {adsTab === "terms" && (
+                      <>
+                        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+                          <div className="grid grid-cols-[28px_1fr_60px_80px_70px_70px_60px] gap-3 px-4 py-2.5 text-xs text-slate-500 font-medium border-b"
+                            style={{ background: "var(--color-card-header)", borderColor: "var(--color-border)" }}>
+                            <div />
+                            <div>搜索词</div><div>点击</div><div>展示量</div><div>花费</div><div>转化</div><div>ROAS</div>
+                          </div>
+                          {searchTerms.length === 0 ? (
+                            <div className="flex flex-col items-center py-12 text-slate-500 gap-2">
+                              <Tag className="w-7 h-7 opacity-30" /><p className="text-sm">暂无搜索词数据</p>
+                            </div>
+                          ) : searchTerms.map((t, i) => (
+                            <div key={i} onClick={() => toggleTerm(t.search_term)}
+                              className={`grid grid-cols-[28px_1fr_60px_80px_70px_70px_60px] gap-3 px-4 py-2.5 border-b items-center cursor-pointer text-sm transition-colors ${selectedTerms.has(t.search_term) ? "bg-red-500/5" : "hover:bg-[var(--color-sidebar-accent)]"}`}
+                              style={{ borderColor: "var(--color-border)" }}>
+                              <input type="checkbox" checked={selectedTerms.has(t.search_term)} onChange={() => toggleTerm(t.search_term)}
+                                onClick={e => e.stopPropagation()} className="w-3.5 h-3.5 accent-red-500" />
+                              <span className="text-white truncate">{t.search_term}</span>
+                              <span className="text-blue-400 font-medium">{t.clicks}</span>
+                              <span className="text-slate-400">{t.impressions.toLocaleString()}</span>
+                              <span className="text-amber-400">${t.cost.toFixed(2)}</span>
+                              <span className="text-emerald-400">{t.conversions.toFixed(1)}</span>
+                              <span className={t.roas >= 3 ? "text-emerald-400 font-medium" : t.roas >= 1 ? "text-amber-400" : "text-red-400"}>
+                                {t.roas > 0 ? `${t.roas}x` : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* 否定关键词区域 */}
+                        <div className="rounded-xl border p-4 space-y-3" style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                          <div className="flex items-center gap-2">
+                            <MinusCircle className="w-4 h-4 text-red-400" />
+                            <span className="text-sm font-medium text-white">添加否定关键词</span>
+                            {selectedTerms.size > 0 && (
+                              <span className="text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
+                                已选 {selectedTerms.size} 个搜索词
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400">勾选上方搜索词，或手动输入（多个词用逗号或换行分隔）</p>
+                          <textarea
+                            value={negKw}
+                            onChange={e => setNegKw(e.target.value)}
+                            placeholder="手动输入否定词，如：free, cheap, diy"
+                            rows={2}
+                            className="w-full text-sm bg-[var(--color-bg)] border border-[var(--color-border)] text-white rounded-lg px-3 py-2 outline-none resize-none"
+                          />
+                          <Button onClick={handleAddNegative} disabled={addingNeg || (selectedTerms.size === 0 && !negKw.trim())}
+                            className="gap-2 text-sm bg-red-600 hover:bg-red-700 text-white">
+                            {addingNeg ? <Loader2 className="w-4 h-4 animate-spin" /> : <MinusCircle className="w-4 h-4" />}
+                            添加到购物广告否定词
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* 商品维度表现 */}
+                    {adsTab === "products" && (
+                      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+                        <div className="grid grid-cols-[1fr_60px_80px_70px_70px_60px] gap-3 px-4 py-2.5 text-xs text-slate-500 font-medium border-b"
+                          style={{ background: "var(--color-card-header)", borderColor: "var(--color-border)" }}>
+                          <div>商品</div><div>点击</div><div>展示量</div><div>花费</div><div>转化</div><div>ROAS</div>
+                        </div>
+                        {adProducts.length === 0 ? (
+                          <div className="flex flex-col items-center py-12 text-slate-500 gap-2">
+                            <ShoppingCart className="w-7 h-7 opacity-30" /><p className="text-sm">暂无商品广告数据</p>
+                          </div>
+                        ) : adProducts.map((p, i) => (
+                          <div key={i} className="grid grid-cols-[1fr_60px_80px_70px_70px_60px] gap-3 px-4 py-2.5 border-b items-center text-sm"
+                            style={{ borderColor: "var(--color-border)" }}>
+                            <div className="min-w-0">
+                              <p className="text-white truncate">{p.title || p.item_id}</p>
+                              {p.item_id && <p className="text-xs text-slate-500 truncate">ID: {p.item_id}</p>}
+                            </div>
+                            <span className="text-blue-400 font-medium">{p.clicks}</span>
+                            <span className="text-slate-400">{p.impressions.toLocaleString()}</span>
+                            <span className="text-amber-400">${p.cost.toFixed(2)}</span>
+                            <span className="text-emerald-400">{p.conversions.toFixed(1)}</span>
+                            <span className={p.roas >= 3 ? "text-emerald-400 font-medium" : p.roas >= 1 ? "text-amber-400" : "text-red-400"}>
+                              {p.roas > 0 ? `${p.roas}x` : "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
     </div>
