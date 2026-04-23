@@ -18,6 +18,17 @@ try:
 except Exception as e:
     print("tokeninfo error:", e)
 
+# 先列出可访问的客户账号
+list_req = urllib.request.Request(
+    "https://googleads.googleapis.com/v19/customers:listAccessibleCustomers",
+    headers={"Authorization": "Bearer " + token, "developer-token": "ZhtA8OONYyUntoDCFzY4EA"},
+)
+try:
+    list_r = urllib.request.urlopen(list_req)
+    print("Accessible customers:", list_r.read().decode()[:500])
+except urllib.error.HTTPError as e:
+    print("listAccessibleCustomers ERROR", e.code, e.read().decode()[:500])
+
 url = "https://googleads.googleapis.com/v19/customers/6454868629/googleAds:search"
 body = json.dumps({"query": "SELECT campaign.name FROM campaign LIMIT 1"}).encode()
 headers = {
