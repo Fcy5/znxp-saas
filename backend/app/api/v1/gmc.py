@@ -442,17 +442,18 @@ ADS_BASE = "https://googleads.googleapis.com/v19"
 
 async def _ads_search(access_token: str, customer_id: str, query: str) -> list[dict]:
     """执行 GAQL 查询，返回 results 列表"""
+    import logging
+    url = f"{ADS_BASE}/customers/{customer_id}/googleAds:search"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "developer-token": settings.google_ads_developer_token,
         "Content-Type": "application/json",
     }
+    logging.info(f"Google Ads API request: POST {url}")
+    logging.info(f"developer-token present: {bool(settings.google_ads_developer_token)}, customer_id: {customer_id!r}")
     async with httpx.AsyncClient(trust_env=False, timeout=30) as client:
-        resp = await client.post(
-            f"{ADS_BASE}/customers/{customer_id}/googleAds:search",
-            headers=headers,
-            json={"query": query},
-        )
+        resp = await client.post(url, headers=headers, json={"query": query})
+    logging.info(f"Google Ads API response: {resp.status_code}")
     if resp.status_code == 401:
         raise HTTPException(status_code=401, detail="Google Ads 授权失败，请重新连接 Google 账号")
     if resp.status_code == 403:
