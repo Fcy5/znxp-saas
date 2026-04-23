@@ -122,13 +122,13 @@ def job_shopify_cache_sync():
                             cur.execute("""
                                 INSERT INTO shopify_products_cache
                                     (shop_id, shopify_product_id, title, image_url, status,
-                                     product_type, tags, price, published_at, shopify_created_at, synced_at)
+                                     product_type, tags, price, handle, published_at, shopify_created_at, synced_at)
                                 VALUES
-                                    (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                    (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                                 ON DUPLICATE KEY UPDATE
                                     title=VALUES(title), image_url=VALUES(image_url), status=VALUES(status),
                                     product_type=VALUES(product_type), tags=VALUES(tags), price=VALUES(price),
-                                    published_at=VALUES(published_at), synced_at=VALUES(synced_at)
+                                    handle=VALUES(handle), published_at=VALUES(published_at), synced_at=VALUES(synced_at)
                             """, (
                                 shop_id, p["id"],
                                 (p.get("title") or "")[:512],
@@ -137,6 +137,7 @@ def job_shopify_cache_sync():
                                 (p.get("product_type") or "")[:255],
                                 (p.get("tags") or "")[:1024],
                                 (variants[0].get("price", "") if variants else "")[:32],
+                                (p.get("handle") or "")[:500],
                                 _parse_dt(p.get("published_at")),
                                 _parse_dt(p.get("created_at")),
                                 now,

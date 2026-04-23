@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # Google Merchant API + Google Ads
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_merchant_id: str = ""
+    google_ads_customer_id: str = ""
+    google_ads_developer_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
