@@ -484,7 +484,7 @@ async def get_search_terms(
             metrics.conversions,
             metrics.conversions_value
         FROM search_term_view
-        WHERE segments.date DURING LAST_{days}_DAYS
+        WHERE segments.date BETWEEN '{(datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")}' AND '{datetime.now(timezone.utc).strftime("%Y-%m-%d")}'
           AND metrics.impressions > 0
         ORDER BY metrics.clicks DESC
         LIMIT 100
@@ -546,7 +546,7 @@ async def get_product_performance(
             metrics.conversions,
             metrics.conversions_value
         FROM shopping_performance_view
-        WHERE segments.date DURING LAST_{days}_DAYS
+        WHERE segments.date BETWEEN '{(datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")}' AND '{datetime.now(timezone.utc).strftime("%Y-%m-%d")}'
           AND metrics.impressions > 0
         ORDER BY metrics.clicks DESC
         LIMIT 50
@@ -597,7 +597,7 @@ async def get_shopping_campaigns(
             metrics.conversions_value
         FROM campaign
         WHERE campaign.advertising_channel_type IN ('SHOPPING', 'PERFORMANCE_MAX')
-          AND segments.date DURING LAST_{days}_DAYS
+          AND segments.date BETWEEN '{(datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")}' AND '{datetime.now(timezone.utc).strftime("%Y-%m-%d")}'
           AND metrics.impressions > 0
         ORDER BY metrics.cost_micros DESC
         LIMIT 50
