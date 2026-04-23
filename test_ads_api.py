@@ -8,6 +8,16 @@ cur.execute("SELECT access_token FROM google_oauth_tokens LIMIT 1")
 token = cur.fetchone()[0]
 print("token prefix:", token[:30])
 
+# 检查 token 的实际 scope
+info_req = urllib.request.Request(f"https://oauth2.googleapis.com/tokeninfo?access_token={token}")
+try:
+    info_r = urllib.request.urlopen(info_req)
+    info = json.loads(info_r.read().decode())
+    print("token scope:", info.get("scope", "NO SCOPE"))
+    print("token email:", info.get("email", ""))
+except Exception as e:
+    print("tokeninfo error:", e)
+
 url = "https://googleads.googleapis.com/v19/customers/6454868629/googleAds:search"
 body = json.dumps({"query": "SELECT campaign.name FROM campaign LIMIT 1"}).encode()
 headers = {
