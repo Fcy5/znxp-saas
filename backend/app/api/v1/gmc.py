@@ -437,7 +437,7 @@ async def sync_gmc_status(
 
 # ── Google Ads API helpers ────────────────────────────────────────────────────
 
-ADS_BASE = "https://googleads.googleapis.com/v17"
+ADS_BASE = "https://googleads.googleapis.com/v19"
 
 
 async def _ads_search(access_token: str, customer_id: str, query: str) -> list[dict]:
