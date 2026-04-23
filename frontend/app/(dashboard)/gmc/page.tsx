@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
@@ -65,7 +65,7 @@ const GMC_STATUS: Record<string, { label: string; color: string; icon?: React.Re
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function GmcPage() {
+function GmcPageInner() {
   const searchParams = useSearchParams()
 
   // shared
@@ -655,5 +655,13 @@ export default function GmcPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function GmcPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen text-slate-400"><span>加载中...</span></div>}>
+      <GmcPageInner />
+    </Suspense>
   )
 }
