@@ -8,7 +8,7 @@ import { request, shopApi, type Shop } from "@/lib/api"
 import {
   ShoppingCart, Link2, RefreshCw, Search, ChevronLeft, ChevronRight,
   CheckCircle2, Clock, XCircle, Loader2, AlertCircle, TrendingUp,
-  BarChart2, Tag, MinusCircle, ExternalLink, DollarSign, MousePointerClick,
+  BarChart2, Tag, MinusCircle, DollarSign, MousePointerClick, Sparkles,
 } from "lucide-react"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -98,6 +98,8 @@ export default function GmcPage() {
   const [negKw, setNegKw] = useState("")
   const [addingNeg, setAddingNeg] = useState(false)
   const [selectedTerms, setSelectedTerms] = useState<Set<string>>(new Set())
+  const [aiAnalysis, setAiAnalysis] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
 
   const PER_PAGE = 20
 
@@ -216,6 +218,20 @@ export default function GmcPage() {
   const toggleSelect = (pid: number) => setSelectedIds(prev => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n })
   const toggleAll = () => setSelectedIds(selectedIds.size === products.length ? new Set() : new Set(products.map(p => p.shopify_product_id)))
   const toggleTerm = (term: string) => setSelectedTerms(prev => { const n = new Set(prev); n.has(term) ? n.delete(term) : n.add(term); return n })
+
+  const handleAiAnalysis = async () => {
+    if (!summary) return showMsg("请先加载广告数据", "err")
+    setAiLoading(true)
+    setAiAnalysis("")
+    try {
+      const res = await request<any>("/gmc/ads/ai-analysis", {
+        method: "POST",
+        body: JSON.stringify({ days, summary, search_terms: searchTerms, ad_products: adProducts }),
+      })
+      setAiAnalysis(res.data?.analysis || "")
+    } catch (e: any) { showMsg(e.message || "AI 分析失败", "err") }
+    finally { setAiLoading(false) }
+  }
   const totalPages = Math.ceil(total / PER_PAGE)
 
   return (
@@ -395,10 +411,17 @@ export default function GmcPage() {
                       近 {d} 天
                     </button>
                   ))}
-                  <Button variant="outline" size="sm" onClick={loadAds} disabled={adsLoading}
-                    className="ml-auto gap-1.5 text-xs border-[var(--color-border)] text-slate-300">
-                    <RefreshCw className={`w-3.5 h-3.5 ${adsLoading ? "animate-spin" : ""}`} />刷新
-                  </Button>
+                  <div className="ml-auto flex gap-2">
+                    <Button variant="outline" size="sm" onClick={loadAds} disabled={adsLoading}
+                      className="gap-1.5 text-xs border-[var(--color-border)] text-slate-300">
+                      <RefreshCw className={`w-3.5 h-3.5 ${adsLoading ? "animate-spin" : ""}`} />刷新
+                    </Button>
+                    <Button size="sm" onClick={handleAiAnalysis} disabled={aiLoading || !summary}
+                      className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
+                      {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      AI 分析
+                    </Button>
+                  </div>
                 </div>
 
                 {adsLoading ? (
@@ -494,6 +517,26 @@ export default function GmcPage() {
                           </Button>
                         </div>
                       </>
+                    )}
+
+                    {/* AI 分析结果 */}
+                    {(aiLoading || aiAnalysis) && (
+                      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+                        <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ background: "var(--color-card-header)", borderColor: "var(--color-border)" }}>
+                          <Sparkles className="w-4 h-4 text-violet-400" />
+                          <span className="text-sm font-medium text-white">AI 广告优化分析</span>
+                          {aiLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400 ml-1" />}
+                        </div>
+                        <div className="p-4" style={{ background: "var(--color-card)" }}>
+                          {aiLoading ? (
+                            <div className="flex items-center gap-2 text-slate-400 text-sm py-4 justify-center">
+                              <Loader2 className="w-4 h-4 animate-spin" />AI 正在分析中，约 10-20 秒...
+                            </div>
+                          ) : (
+                            <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{aiAnalysis}</div>
+                          )}
+                        </div>
+                      </div>
                     )}
 
                     {/* 商品维度表现 */}

@@ -640,3 +640,79 @@ async def add_negative_keywords(
         data={"added": len(body.keywords), "campaign": campaign_name},
         message=f"已向「{campaign_name}」添加 {len(body.keywords)} 个否定关键词"
     )
+
+
+# ── AI 广告数据分析 ───────────────────────────────────────────────────────────
+
+class AdsAnalysisRequest(BaseModel):
+    days: int = 30
+    summary: dict
+    search_terms: list[dict]
+    ad_products: list[dict]
+
+
+@router.post("/ads/ai-analysis")
+async def ads_ai_analysis(body: AdsAnalysisRequest, current_user_id: CurrentUser):
+    """用 AI 分析广告数据，给出优化建议"""
+    from openai import OpenAI
+    from app.core.config import settings as s
+
+    if not s.ai_api_key:
+        raise HTTPException(status_code=400, detail="AI 服务未配置")
+
+    # 整理搜索词数据（取前30条）
+    terms_text = ""
+    for t in body.search_terms[:30]:
+        roas_str = f"{t['roas']}x" if t.get('roas', 0) > 0 else "无转化"
+        terms_text += f"  - \"{t['search_term']}\"：点击{t['clicks']} 花费${t['cost']:.2f} 转化{t['conversions']:.1f} ROAS={roas_str}\n"
+
+    # 整理商品数据（取前20条）
+    products_text = ""
+    for p in body.ad_products[:20]:
+        roas_str = f"{p['roas']}x" if p.get('roas', 0) > 0 else "无转化"
+        products_text += f"  - 「{p['title'][:40]}」：点击{p['clicks']} 花费${p['cost']:.2f} ROAS={roas_str}\n"
+
+    sm = body.summary
+    prompt = f"""你是一位专业的 Google 购物广告优化专家。请分析以下广告账户数据并给出具体可执行的优化建议。
+
+## 账户近 {body.days} 天总览
+- 总点击：{sm.get('total_clicks', 0):,}
+- 总花费：${sm.get('total_cost', 0):.2f}
+- 总转化：{sm.get('total_conversions', 0):.1f}
+- 平均 ROAS：{sm.get('avg_roas', 0)}x
+
+## 搜索词报告（按点击降序）
+{terms_text if terms_text else "  暂无数据"}
+
+## 商品维度表现
+{products_text if products_text else "  暂无数据"}
+
+---
+
+请从以下维度给出分析和建议（用中文回答，结构清晰，每个维度 2-4 条要点）：
+
+### 1. 账户整体健康度评估
+评估当前 ROAS 水平、花费效率、是否存在严重亏损。
+
+### 2. 高价值搜索词（值得加出价/单独做广告组）
+列出 ROAS 高、转化好的词，建议如何利用。
+
+### 3. 需要立即加否定词的搜索词
+列出高花费低转化（ROAS < 1 或无转化且花费 > $5）的词，说明为什么要否定。
+
+### 4. 商品层面优化建议
+哪些商品值得增加预算？哪些需要暂停或优化落地页？
+
+### 5. 本周最优先执行的 3 件事
+给出具体、可立即操作的行动清单。"""
+
+    client = OpenAI(api_key=s.ai_api_key, base_url=s.ai_base_url)
+    resp = client.chat.completions.create(
+        model=s.ai_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4,
+        max_tokens=2000,
+    )
+    analysis = resp.choices[0].message.content
+
+    return Response(data={"analysis": analysis, "days": body.days})
