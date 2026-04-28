@@ -540,14 +540,14 @@ async def sync_shopify_products(
     upsert_sql = text("""
         INSERT INTO shopify_products_cache
             (shop_id, shopify_product_id, title, image_url, status,
-             product_type, tags, price, published_at, shopify_created_at, synced_at)
+             product_type, tags, price, handle, published_at, shopify_created_at, synced_at)
         VALUES
             (:shop_id, :shopify_product_id, :title, :image_url, :status,
-             :product_type, :tags, :price, :published_at, :shopify_created_at, :synced_at)
+             :product_type, :tags, :price, :handle, :published_at, :shopify_created_at, :synced_at)
         ON DUPLICATE KEY UPDATE
             title=VALUES(title), image_url=VALUES(image_url), status=VALUES(status),
             product_type=VALUES(product_type), tags=VALUES(tags), price=VALUES(price),
-            published_at=VALUES(published_at), synced_at=VALUES(synced_at)
+            handle=VALUES(handle), published_at=VALUES(published_at), synced_at=VALUES(synced_at)
     """)
 
     for p in products:
@@ -562,6 +562,7 @@ async def sync_shopify_products(
             "product_type": (p.get("product_type") or "")[:255],
             "tags": (p.get("tags") or "")[:1024],
             "price": (variants[0].get("price", "") if variants else "")[:32],
+            "handle": (p.get("handle") or "")[:500],
             "published_at": _parse_dt(p.get("published_at")),
             "shopify_created_at": _parse_dt(p.get("created_at")),
             "synced_at": now,

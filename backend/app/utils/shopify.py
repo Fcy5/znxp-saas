@@ -86,7 +86,8 @@ async def create_product(
     url = f"https://{shop_domain}/admin/api/{API_VERSION}/products.json"
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(url, json={"product": product_body}, headers=_headers(access_token))
-        resp.raise_for_status()
+        if not resp.is_success:
+            raise ValueError(f"Shopify {resp.status_code}: {resp.text[:500]}")
         data = resp.json()
 
     product = data.get("product")

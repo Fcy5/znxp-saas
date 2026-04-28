@@ -7,12 +7,22 @@ from sqlalchemy import select
 import math
 
 from app.core.deps import CurrentUser, DBSession
+from app.core.config import settings
 from app.models.product import Product
 from app.models.shop import Shop
 from app.models.publish import PublishedProduct
 from app.schemas.publish import PublishRequest, PublishedProductResponse
 from app.schemas.common import Response, PagedResponse, PageInfo
 from app.utils.shopify import create_product
+
+
+def _to_full_url(path: str | None) -> str | None:
+    """Convert local /static/... paths to absolute URLs Shopify can download."""
+    if not path:
+        return None
+    if path.startswith("/"):
+        return f"{settings.static_base_url.rstrip('/')}{path}"
+    return path
 
 router = APIRouter(prefix="/publish", tags=["Publish"])
 
@@ -72,8 +82,8 @@ async def publish_product(body: PublishRequest, current_user_id: CurrentUser, db
             title=final_title,
             description_html=final_description,
             price=final_price,
-            image_url=product.main_image,
-            extra_images=body.extra_images,
+            image_url=_to_full_url(product.main_image),
+            extra_images=[_to_full_url(u) for u in (body.extra_images or []) if u],
             product_type=final_product_type,
             tags=final_tags,
             vendor=product.brand or "",

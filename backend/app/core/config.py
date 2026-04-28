@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # Static file base URL (used to convert local paths to absolute URLs for Shopify)
+    static_base_url: str = "https://znxp-sass.vqmjc.cc"
+
     # Google Merchant API + Google Ads
     google_client_id: str = ""
     google_client_secret: str = ""

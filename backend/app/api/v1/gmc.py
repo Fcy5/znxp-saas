@@ -121,7 +121,7 @@ async def get_oauth_url(current_user_id: CurrentUser):
 async def oauth_callback(
     code: str = Query(...),
     state: str = Query(...),
-    db: DBSession = None,  # noqa - FastAPI injects via Annotated[..., Depends]
+    db: DBSession = None,
 ):
     """Google OAuth 回调，交换 code 换 tokens"""
     user_id = int(state)
