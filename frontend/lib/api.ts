@@ -394,9 +394,15 @@ export const AVAILABLE_MODELS = [
 ]
 
 export const IMAGE_MODELS = [
-  { value: "openai/gpt-image-1.5",                  label: "GPT-Image 1.5" },
+  { value: "openai/gpt-image-2",                      label: "GPT-Image 2 (推荐)" },
+  { value: "openai/gpt-image-1.5",                   label: "GPT-Image 1.5" },
   { value: "google/gemini-3.1-flash-image-preview",  label: "Gemini 3.1 Flash Image" },
   { value: "google/gemini-2.5-flash-image",          label: "Gemini 2.5 Flash Image" },
+]
+
+export const VIDEO_MODELS = [
+  { value: "doubao-seedance-2-0-260128", label: "Seedance 2.0 (ByteDance 推荐)" },
+  { value: "wan2.7-i2v",                label: "万象 2.7 (阿里云)" },
 ]
 
 export const IMAGE_PROMPTS = [
@@ -453,7 +459,7 @@ export const agentApi = {
       body: JSON.stringify({ product_id, language, model }),
     }),
 
-  generateImage: (prompt: string, model = "openai/gpt-image-1.5", referenceImageUrl?: string) =>
+  generateImage: (prompt: string, model = "openai/gpt-image-2", referenceImageUrl?: string) =>
     request<ApiResponse<{ url: string }>>("/agent/image-generate", {
       method: "POST",
       body: JSON.stringify({ prompt, model, size: "1024x1024", reference_image_url: referenceImageUrl }),
@@ -527,16 +533,16 @@ export const agentApi = {
       body: JSON.stringify({ shop_id, task_id, selected_shopify_ids }),
     }),
 
-  videoGeneration: (product_id: number, duration = 5, resolution = "720p") =>
+  videoGeneration: (product_id: number, duration = 5, resolution = "720p", model = "doubao-seedance-2-0-260128") =>
     request<ApiResponse<AgentTask>>("/agent/video-generation", {
       method: "POST",
-      body: JSON.stringify({ product_id, duration, resolution }),
+      body: JSON.stringify({ product_id, duration, resolution, model }),
     }),
 
-  videoFromUrl: (image_url: string, title: string, product_type = "", duration = 5) =>
+  videoFromUrl: (image_url: string, title: string, product_type = "", duration = 5, model = "doubao-seedance-2-0-260128") =>
     request<ApiResponse<AgentTask>>("/agent/video-from-url", {
       method: "POST",
-      body: JSON.stringify({ image_url, title, product_type, duration }),
+      body: JSON.stringify({ image_url, title, product_type, duration, model }),
     }),
 
   pollTask: (task_id: number) =>

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Loader2, Sparkles, Zap, ChevronRight, X, Search, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { agentApi, shopApi, productApi, type AgentTask, type Shop, type ProductCard } from "@/lib/api"
+import { agentApi, shopApi, productApi, type AgentTask, type Shop, type ProductCard, VIDEO_MODELS } from "@/lib/api"
 
 const agentCapabilities = [
   {
@@ -265,6 +265,7 @@ export default function AgentPage() {
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [modalType, setModalType] = useState<string | null>(null)
   const [launching, setLaunching] = useState<string | null>(null)
+  const [videoModel, setVideoModel] = useState(VIDEO_MODELS[0].value)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadTasks = async () => {
@@ -318,10 +319,10 @@ export default function AgentPage() {
     setModalType(null)
     setLaunching("video_generation")
     try {
-      const task = (await agentApi.videoGeneration(productId, 5, "720p")).data!
+      const task = (await agentApi.videoGeneration(productId, 5, "720p", videoModel)).data!
       setTasks(prev => [task, ...prev])
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "启动失败，请确认已配置 ARK_API_KEY")
+      alert(e instanceof Error ? e.message : "启动失败，请确认已配置视频模型 API Key")
     } finally { setLaunching(null) }
   }
 
@@ -403,6 +404,16 @@ export default function AgentPage() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed mb-3">{cap.description}</p>
+                      {cap.type === "video_generation" && (
+                        <select
+                          className="w-full text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground mb-2"
+                          value={videoModel}
+                          onChange={e => { e.stopPropagation(); setVideoModel(e.target.value) }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {VIDEO_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                      )}
                       <div className="flex flex-wrap gap-1 mb-3">
                         {cap.steps.map((s, i) => (
                           <div key={s} className="flex items-center gap-1">

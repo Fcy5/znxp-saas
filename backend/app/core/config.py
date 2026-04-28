@@ -30,8 +30,12 @@ class Settings(BaseSettings):
     ai_model: str = "gemini-2.0-flash"
 
 
-    # 阿里云百炼 DashScope（视频生成 wan2.1-i2v / 文生图 wanx）
+    # 阿里云百炼 DashScope（视频生成 wan2.7-i2v）
     dashscope_api_key: str = ""
+
+    # 视频生成：Seedance 2.0（火山引擎 ARK）
+    seedance_api_key: str = ""
+    seedance_model: str = "doubao-seedance-2-0-260128"
 
     # Shopify OAuth
     shopify_client_id: str = ""

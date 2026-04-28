@@ -236,25 +236,24 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
         ref_url = body.reference_image_url if (body.reference_image_url and body.reference_image_url.startswith("http")) else None
 
         if ref_url:
-            # 图生图：先让视觉模型描述参考图，再用描述+prompt 文生图
-            vision_resp = client.chat.completions.create(
-                model="google/gemini-2.5-flash",
-                messages=[{"role": "user", "content": [
-                    {"type": "image_url", "image_url": {"url": ref_url}},
-                    {"type": "text", "text": "Describe this product image in detail for use as an image generation prompt. Include: product type, colors, style, materials, background, lighting, mood. Return only the description, no extra text."},
-                ]}],
+            # 图生图：下载参考图后调用 images.edit（原生图生图）
+            async with httpx.AsyncClient(timeout=60) as hc:
+                ref_resp = await hc.get(ref_url)
+                ref_bytes = ref_resp.content
+            resp = client.images.edit(
+                model=body.model,
+                image=("reference.png", ref_bytes, "image/png"),
+                prompt=body.prompt[:4000],
+                n=1,
+                size=body.size,
             )
-            img_description = vision_resp.choices[0].message.content.strip()
-            final_prompt = f"{img_description}. Style requirement: {body.prompt}"
         else:
-            final_prompt = body.prompt
-
-        resp = client.images.generate(
-            model=body.model,
-            prompt=final_prompt[:4000],
-            n=1,
-            size=body.size,
-        )
+            resp = client.images.generate(
+                model=body.model,
+                prompt=body.prompt[:4000],
+                n=1,
+                size=body.size,
+            )
 
         img_data = resp.data[0]
         if img_data.b64_json:
@@ -378,18 +377,24 @@ async def trigger_video_generation(
     current_user_id: CurrentUser,
     db: DBSession,
 ):
-    """图生视频：调用阿里云百炼 wan2.1-i2v-turbo（需配置 DASHSCOPE_API_KEY）"""
-    if not settings.dashscope_api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="DASHSCOPE_API_KEY 未配置。注册: https://bailian.aliyun.com/ 开通服务自动获得新人免费额度，API Key: https://dashscope.console.aliyun.com/apiKey"
-        )
+    """图生视频：支持阿里云百炼 wan2.7-i2v 和火山引擎 Seedance 2.0"""
+    use_seedance = "seedance" in (body.model or "")
+    if use_seedance:
+        if not settings.seedance_api_key:
+            raise HTTPException(status_code=503, detail="SEEDANCE_API_KEY 未配置，请在 .env 中设置")
+    else:
+        if not settings.dashscope_api_key:
+            raise HTTPException(
+                status_code=503,
+                detail="DASHSCOPE_API_KEY 未配置。注册: https://bailian.aliyun.com/ 获取 API Key"
+            )
 
     task = await _create_task(db, current_user_id, "video_generation",
                               product_id=body.product_id,
                               input_data={
                                   "duration": body.duration,
                                   "resolution": body.resolution,
+                                  "model": body.model,
                               })
     await db.commit()
 
@@ -397,7 +402,7 @@ async def trigger_video_generation(
     background_tasks.add_task(
         run_video_generation,
         task.id, body.product_id, current_user_id,
-        body.duration, body.resolution,
+        body.duration, body.resolution, body.model,
     )
 
     return Response(data=_task_resp(task), message="视频生成已启动，约 60-120 秒完成，请稍后查看结果")
@@ -413,17 +418,22 @@ async def video_from_url(
     db: DBSession,
 ):
     """Shopify 商品图生视频：直接传入图片URL，无需 product_id"""
-    if not settings.dashscope_api_key:
-        raise HTTPException(status_code=503, detail="DASHSCOPE_API_KEY 未配置")
+    use_seedance = "seedance" in (body.model or "")
+    if use_seedance:
+        if not settings.seedance_api_key:
+            raise HTTPException(status_code=503, detail="SEEDANCE_API_KEY 未配置，请在 .env 中设置")
+    else:
+        if not settings.dashscope_api_key:
+            raise HTTPException(status_code=503, detail="DASHSCOPE_API_KEY 未配置")
 
     task = await _create_task(db, current_user_id, "video_generation",
-                              input_data={"image_url": body.image_url, "title": body.title})
+                              input_data={"image_url": body.image_url, "title": body.title, "model": body.model})
     await db.commit()
 
     from app.services.agent_tasks import run_video_from_url
     background_tasks.add_task(
         run_video_from_url,
-        task.id, body.image_url, body.title, body.product_type, body.duration,
+        task.id, body.image_url, body.title, body.product_type, body.duration, body.model,
     )
     return Response(data=_task_resp(task), message="视频生成已启动，约 60-120 秒完成")
 

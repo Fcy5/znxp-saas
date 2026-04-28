@@ -723,16 +723,111 @@ Return ONLY valid JSON with these exact keys:
         _update_task(task_id, status="failed", error_message=str(e))
 
 
-# ── run_video_generation（阿里云百炼 DashScope wan2.1-i2v-turbo）──────────────
+# ── _run_seedance_video（火山引擎 ARK Seedance 2.0）──────────────────────────
+
+def _run_seedance_video(task_id: int, image_url: str, prompt: str,
+                        duration: int = 5, resolution: str = "720p"):
+    """Seedance 2.0 视频生成：火山引擎 ARK API，异步轮询"""
+    import time, os, uuid
+
+    _update_task(task_id, progress=20)
+
+    headers = {
+        "Authorization": f"Bearer {settings.seedance_api_key}",
+        "Content-Type": "application/json",
+    }
+    endpoint = "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks"
+
+    content = []
+    if image_url and image_url.startswith("https://"):
+        content.append({"type": "image_url", "image_url": {"url": image_url}})
+    content.append({"type": "text", "text": prompt[:500]})
+
+    payload = {
+        "model": settings.seedance_model,
+        "content": content,
+        "parameters": {
+            "duration": duration,
+            "aspect_ratio": "16:9",
+            "resolution": resolution,
+        },
+    }
+
+    client_kwargs = {"timeout": 30, "trust_env": False}
+
+    with httpx.Client(**client_kwargs) as client:
+        resp = client.post(endpoint, headers=headers, json=payload)
+        resp.raise_for_status()
+        data = resp.json()
+
+    sdk_task_id = data.get("id")
+    if not sdk_task_id:
+        _update_task(task_id, status="failed",
+                     error_message=f"Seedance 创建任务失败: {json.dumps(data, ensure_ascii=False)}")
+        return
+
+    _update_task(task_id, progress=30)
+
+    poll_url = f"https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks/{sdk_task_id}"
+    poll_headers = {"Authorization": f"Bearer {settings.seedance_api_key}"}
+
+    for i in range(36):  # 最多等 6 分钟（36 × 10s）
+        time.sleep(10)
+        with httpx.Client(**client_kwargs) as client:
+            poll_data = client.get(poll_url, headers=poll_headers).json()
+
+        status = poll_data.get("status", "")
+        _update_task(task_id, progress=min(30 + (i + 1) * 2, 90))
+
+        if status == "succeeded":
+            contents = poll_data.get("content", [])
+            video_url = None
+            for c in contents:
+                if c.get("type") == "video_url":
+                    video_url = c.get("video_url", {}).get("url")
+                    break
+            if not video_url:
+                _update_task(task_id, status="failed", error_message="Seedance 未返回视频 URL")
+                return
+
+            video_dir = os.path.join(os.path.dirname(__file__), "../../static/uploads/ai_videos")
+            os.makedirs(video_dir, exist_ok=True)
+            filename = f"{uuid.uuid4().hex}.mp4"
+            with httpx.Client(timeout=120, trust_env=False) as client:
+                r = client.get(video_url)
+                with open(os.path.join(video_dir, filename), "wb") as f:
+                    f.write(r.content)
+
+            _update_task(task_id, status="success", progress=100, output_data={
+                "video_url": f"/static/uploads/ai_videos/{filename}",
+                "duration": duration,
+            })
+            return
+
+        elif status in ("failed", "canceled"):
+            err = poll_data.get("error", {}).get("message", status)
+            _update_task(task_id, status="failed", error_message=f"Seedance 任务失败: {err}")
+            return
+
+    _update_task(task_id, status="failed", error_message="视频生成超时（6 分钟），请重试")
+
+
+# ── run_video_generation（视频生成，支持 wan2.7 / Seedance 2.0）──────────────
 
 def run_video_generation(task_id: int, product_id: int, user_id: int,
-                         duration: int = 5, resolution: str = "720p"):
-    """图生视频：阿里云百炼 wan2.1-i2v-turbo，异步轮询，结果存本地"""
+                         duration: int = 5, resolution: str = "720p",
+                         model: str = "doubao-seedance-2-0-260128"):
+    """图生视频：支持 Seedance 2.0（火山引擎）和 wan2.7-i2v（阿里云）"""
     import time
     import os
     import uuid
 
-    if not settings.dashscope_api_key:
+    use_seedance = "seedance" in model
+
+    if use_seedance and not settings.seedance_api_key:
+        _update_task(task_id, status="failed", error_message="SEEDANCE_API_KEY 未配置，请在 .env 中设置")
+        return
+    if not use_seedance and not settings.dashscope_api_key:
         _update_task(task_id, status="failed",
                      error_message=(
                          "DASHSCOPE_API_KEY 未配置。"
@@ -768,6 +863,10 @@ def run_video_generation(task_id: int, product_id: int, user_id: int,
             "Smooth camera movement, bright studio lighting, commercial photography style, "
             "clean white background, no text overlay, professional quality."
         )
+
+        if use_seedance:
+            _run_seedance_video(task_id, image_url, prompt, duration, resolution)
+            return
 
         headers = {
             "Authorization": f"Bearer {settings.dashscope_api_key}",
@@ -864,13 +963,18 @@ def run_video_generation(task_id: int, product_id: int, user_id: int,
 # ── run_video_from_url（直接传图片URL，供 Shopify AI 页面使用）─────────────────
 
 def run_video_from_url(task_id: int, image_url: str, title: str,
-                       product_type: str = "", duration: int = 5):
+                       product_type: str = "", duration: int = 5,
+                       model: str = "doubao-seedance-2-0-260128"):
     """图生视频：直接传入图片URL，无需 product_id（Shopify 商品用）"""
     import time, os, uuid
 
-    if not settings.dashscope_api_key:
-        _update_task(task_id, status="failed",
-                     error_message="DASHSCOPE_API_KEY 未配置")
+    use_seedance = "seedance" in model
+
+    if use_seedance and not settings.seedance_api_key:
+        _update_task(task_id, status="failed", error_message="SEEDANCE_API_KEY 未配置，请在 .env 中设置")
+        return
+    if not use_seedance and not settings.dashscope_api_key:
+        _update_task(task_id, status="failed", error_message="DASHSCOPE_API_KEY 未配置")
         return
 
     try:
@@ -881,6 +985,10 @@ def run_video_from_url(task_id: int, image_url: str, title: str,
             "Smooth camera movement, bright studio lighting, commercial photography style, "
             "clean white background, no text overlay, professional quality."
         )
+
+        if use_seedance:
+            _run_seedance_video(task_id, image_url, prompt, duration)
+            return
 
         headers = {
             "Authorization": f"Bearer {settings.dashscope_api_key}",

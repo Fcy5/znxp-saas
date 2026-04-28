@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   Bot, Sparkles, ImageIcon, Share2, Rocket,
-  Loader2, Check, ChevronRight, X, Copy, Download,
+  Loader2, Check, ChevronRight, X, Copy, Download, ImageOff,
 } from "lucide-react"
 import {
   agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_PROMPTS, STATIC_BASE,
@@ -41,6 +41,7 @@ function PublishWorkflow({ productId, productTitle, productImage, onClose, onPub
   const [generatedImgs, setGeneratedImgs] = useState<string[]>([])
   const [selectedImgs, setSelectedImgs] = useState<Set<string>>(new Set())
   const [imgError, setImgError] = useState("")
+  const [useRefImg, setUseRefImg] = useState(true)
 
   const handleGenerateCopy = async () => {
     setCopyLoading(true); setCopyError("")
@@ -58,7 +59,7 @@ function PublishWorkflow({ productId, productTitle, productImage, onClose, onPub
   const handleGenerateImage = async () => {
     setImgLoading(true); setImgError("")
     try {
-      const res = await agentApi.generateImage(imgPrompt, imgModel, productImage)
+      const res = await agentApi.generateImage(imgPrompt, imgModel, useRefImg ? productImage : undefined)
       if (res.data?.url) setGeneratedImgs(prev => [res.data!.url, ...prev])
     } catch (e: unknown) { setImgError(e instanceof Error ? e.message : "生成失败") }
     finally { setImgLoading(false) }
@@ -126,15 +127,23 @@ function PublishWorkflow({ productId, productTitle, productImage, onClose, onPub
       {/* Step 2: AI 图片（基于原图） */}
       {step === "image" && (
         <div className="space-y-3">
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary border border-border">
-            {productImage && (
+          {productImage && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary border border-border">
               <img src={fullUrl(productImage)} alt="原图" className="w-14 h-14 rounded-lg object-cover shrink-0 border border-border" />
-            )}
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              AI 将基于原商品图进行重绘（image edit 模式）。<br />
-              选择风格后点击生成，可多次生成对比。
-            </p>
-          </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+                  {useRefImg ? "图生图模式：AI 基于原图重绘" : "文生图模式：AI 仅根据提示词生成"}
+                </p>
+                <button
+                  onClick={() => setUseRefImg(v => !v)}
+                  className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg border transition-colors ${useRefImg ? "border-violet-500/50 bg-violet-500/10 text-violet-400" : "border-border text-muted-foreground hover:text-foreground"}`}
+                >
+                  {useRefImg ? <ImageIcon className="w-3 h-3" /> : <ImageOff className="w-3 h-3" />}
+                  {useRefImg ? "给AI原图（图生图）" : "不给原图（文生图）"}
+                </button>
+              </div>
+            </div>
+          )}
           <select value={imgModel} onChange={e => setImgModel(e.target.value)} className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground">
             {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
@@ -149,7 +158,7 @@ function PublishWorkflow({ productId, productTitle, productImage, onClose, onPub
           <textarea value={imgPrompt} onChange={e => setImgPrompt(e.target.value)} rows={2}
             className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary" />
           <Button onClick={handleGenerateImage} disabled={imgLoading} className="w-full gap-1.5">
-            {imgLoading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />基于原图生成中...</> : <><Sparkles className="w-3.5 h-3.5" />生成图片</>}
+            {imgLoading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{useRefImg && productImage ? "图生图生成中..." : "文生图生成中..."}</> : <><Sparkles className="w-3.5 h-3.5" />生成图片</>}
           </Button>
           {imgError && <p className="text-xs text-destructive">{imgError}</p>}
           {generatedImgs.length > 0 && (
@@ -236,6 +245,7 @@ function SocialWorkflow({ productId, productImage }: SocialWorkflowProps) {
   const [imgLoading, setImgLoading] = useState(false)
   const [generatedImgs, setGeneratedImgs] = useState<string[]>([])
   const [imgError, setImgError] = useState("")
+  const [useRefImg, setUseRefImg] = useState(true)
 
   const handleGenerateCopy = async () => {
     setCopyLoading(true); setCopyError("")
@@ -249,7 +259,7 @@ function SocialWorkflow({ productId, productImage }: SocialWorkflowProps) {
   const handleGenerateImage = async () => {
     setImgLoading(true); setImgError("")
     try {
-      const res = await agentApi.generateImage(imgPrompt, imgModel, productImage)
+      const res = await agentApi.generateImage(imgPrompt, imgModel, useRefImg ? productImage : undefined)
       if (res.data?.url) setGeneratedImgs(prev => [res.data!.url, ...prev])
     } catch (e: unknown) { setImgError(e instanceof Error ? e.message : "生成失败") }
     finally { setImgLoading(false) }
@@ -314,7 +324,18 @@ function SocialWorkflow({ productId, productImage }: SocialWorkflowProps) {
         {productImage && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary border border-border">
             <img src={fullUrl(productImage)} alt="原图" className="w-12 h-12 rounded-lg object-cover shrink-0 border border-border" />
-            <p className="text-xs text-muted-foreground">将基于此原图进行风格重绘</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground mb-1.5">
+                {useRefImg ? "图生图模式：基于原图重绘" : "文生图模式：仅根据提示词"}
+              </p>
+              <button
+                onClick={() => setUseRefImg(v => !v)}
+                className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg border transition-colors ${useRefImg ? "border-pink-500/50 bg-pink-500/10 text-pink-400" : "border-border text-muted-foreground hover:text-foreground"}`}
+              >
+                {useRefImg ? <ImageIcon className="w-3 h-3" /> : <ImageOff className="w-3 h-3" />}
+                {useRefImg ? "给AI原图（图生图）" : "不给原图（文生图）"}
+              </button>
+            </div>
           </div>
         )}
         <select value={imgModel} onChange={e => setImgModel(e.target.value)}
@@ -332,7 +353,7 @@ function SocialWorkflow({ productId, productImage }: SocialWorkflowProps) {
         <textarea value={imgPrompt} onChange={e => setImgPrompt(e.target.value)} rows={2}
           className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary" />
         <Button onClick={handleGenerateImage} disabled={imgLoading} className="w-full gap-1.5">
-          {imgLoading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />基于原图生成中...</> : <><Sparkles className="w-3.5 h-3.5" />生成社媒配图</>}
+          {imgLoading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{useRefImg && productImage ? "图生图生成中..." : "文生图生成中..."}</> : <><Sparkles className="w-3.5 h-3.5" />生成社媒配图</>}
         </Button>
         {imgError && <p className="text-xs text-destructive">{imgError}</p>}
         {generatedImgs.length > 0 && (

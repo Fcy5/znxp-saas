@@ -64,6 +64,7 @@ export default function ProductDetailPage() {
   const [generatingImg, setGeneratingImg] = useState(false)
   const [imgError, setImgError] = useState("")
   const [generatedImgs, setGeneratedImgs] = useState<string[]>([])
+  const [useRefImg, setUseRefImg] = useState(true)
 
   const handleGenerateImage = async () => {
     if (!imgPrompt.trim()) return
@@ -74,7 +75,7 @@ export default function ProductDetailPage() {
         ? `Product: ${product.title}${product.category ? `, Category: ${product.category}` : ""}. `
         : ""
       const finalPrompt = `${productContext}${imgPrompt}`
-      const referenceUrl = product?.main_image && product.main_image.startsWith("http")
+      const referenceUrl = useRefImg && product?.main_image && product.main_image.startsWith("http")
         ? product.main_image
         : undefined
       const res = await agentApi.generateImage(finalPrompt, imgModel, referenceUrl)
@@ -718,9 +719,20 @@ export default function ProductDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
 
-              {/* 模型选择 */}
+              {/* 模型选择 + 原图开关 */}
               <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">图片模型</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-muted-foreground">图片模型</label>
+                  {product?.main_image && product.main_image.startsWith("http") && (
+                    <button
+                      onClick={() => setUseRefImg(v => !v)}
+                      className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg border transition-colors ${useRefImg ? "border-violet-500/50 bg-violet-500/10 text-violet-400" : "border-border text-muted-foreground hover:text-foreground"}`}
+                    >
+                      <ImageIcon className="w-3 h-3" />
+                      {useRefImg ? "图生图" : "文生图"}
+                    </button>
+                  )}
+                </div>
                 <select
                   value={imgModel}
                   onChange={e => setImgModel(e.target.value)}

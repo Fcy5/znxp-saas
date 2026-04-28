@@ -50,7 +50,7 @@ class ImageProcessRequest(BaseModel):
 
 class ImageGenerateRequest(BaseModel):
     prompt: str
-    model: str = "openai/gpt-image-1.5"
+    model: str = "openai/gpt-image-2"
     size: str = "1024x1024"
     reference_image_url: str | None = None  # 原商品图，用于 image edit
 
@@ -74,6 +74,7 @@ class VideoGenerationRequest(BaseModel):
     product_id: int
     duration: int = 5
     resolution: str = "720p"
+    model: str = "doubao-seedance-2-0-260128"
 
 
 class VideoFromUrlRequest(BaseModel):
@@ -81,6 +82,7 @@ class VideoFromUrlRequest(BaseModel):
     title: str
     product_type: str = ""
     duration: int = 5
+    model: str = "doubao-seedance-2-0-260128"
 
 
 class PublishRequest(BaseModel):

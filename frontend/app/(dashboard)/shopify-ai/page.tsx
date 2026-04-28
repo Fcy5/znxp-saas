@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { agentApi, shopApi, type Shop, type AgentTask } from "@/lib/api"
+import { agentApi, shopApi, type Shop, type AgentTask, VIDEO_MODELS } from "@/lib/api"
 import { Drawer } from "@/components/ui/drawer"
 import {
   Sparkles, Loader2, CheckCircle2, ChevronDown,
@@ -82,6 +82,7 @@ export default function ShopifyAIPage() {
   const [videoStatus, setVideoStatus] = useState<"idle"|"loading"|"polling"|"done"|"failed">("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoError, setVideoError] = useState("")
+  const [videoModel, setVideoModel] = useState(VIDEO_MODELS[0].value)
   const [actionPanel, setActionPanel] = useState<ActionPanel>(null)
   const [statusTarget, setStatusTarget] = useState("active")
   const [priceRule, setPriceRule] = useState("decrease_pct")
@@ -134,7 +135,7 @@ export default function ShopifyAIPage() {
     setVideoError("")
     setVideoUrl(null)
     try {
-      const r = await agentApi.videoFromUrl(product.image_url, product.title, product.product_type)
+      const r = await agentApi.videoFromUrl(product.image_url, product.title, product.product_type, 5, videoModel)
       const tid = r.data.id
       setVideoTaskId(tid)
       setVideoStatus("polling")
@@ -846,13 +847,22 @@ export default function ShopifyAIPage() {
                 </p>
 
                 {videoStatus === "idle" && (
-                  <Button
-                    onClick={() => handleVideoGen(drawerProduct)}
-                    disabled={!drawerProduct.image_url}
-                    className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
-                  >
-                    <Video className="w-4 h-4" />生成视频 & 社媒素材
-                  </Button>
+                  <div className="space-y-2">
+                    <select
+                      className="w-full text-xs bg-secondary border border-border rounded px-2 py-1.5 text-foreground"
+                      value={videoModel}
+                      onChange={e => setVideoModel(e.target.value)}
+                    >
+                      {VIDEO_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
+                    <Button
+                      onClick={() => handleVideoGen(drawerProduct)}
+                      disabled={!drawerProduct.image_url}
+                      className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
+                    >
+                      <Video className="w-4 h-4" />生成视频 & 社媒素材
+                    </Button>
+                  </div>
                 )}
 
                 {(videoStatus === "loading" || videoStatus === "polling") && (
@@ -862,7 +872,7 @@ export default function ShopifyAIPage() {
                       {videoStatus === "loading" ? "正在提交任务..." : "AI 生成中，约 60-120 秒..."}
                     </div>
                     <Progress value={videoStatus === "loading" ? 5 : 40} className="h-1.5" />
-                    <p className="text-xs text-slate-500">使用阿里云百炼 wan2.7 图生视频</p>
+                    <p className="text-xs text-slate-500">{VIDEO_MODELS.find(m => m.value === videoModel)?.label ?? videoModel}</p>
                   </div>
                 )}
 
