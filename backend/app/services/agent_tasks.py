@@ -658,6 +658,7 @@ Return ONLY valid JSON with these exact keys:
 def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_ids: list | None = None):
     """拉取 Shopify 商品 → ThreadPoolExecutor 并发 AI 生成 SEO → 存预览"""
     from concurrent.futures import ThreadPoolExecutor, as_completed
+    print(f"[SEO] task={task_id} shop={shop_id} user={user_id} pids={product_ids}")
     _update_task(task_id, status="running", progress=5)
     try:
         conn = _db()
@@ -671,6 +672,7 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
         finally:
             conn.close()
 
+        print(f"[SEO] shop query done: {bool(shop)}")
         if not shop:
             _update_task(task_id, status="failed", error_message="店铺不存在或无权限")
             return
@@ -685,6 +687,7 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
         target_audience = shop.get("target_audience") or "US buyers looking for personalized gifts"
         brand_style = (shop.get("profile_summary") or "")[:600]
 
+        print(f"[SEO] fetching shopify products from {domain}")
         _update_task(task_id, progress=15)
         _shopify_url = f"https://{domain}/admin/api/2024-04/products.json"
         _shopify_params = {"limit": 250, "fields": "id,title,images,variants,status,product_type,tags,handle,body_html"}
@@ -697,8 +700,9 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
                 for _attempt in range(3):
                     _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
                     if _resp.status_code == 429:
-                        _wait = float(_resp.headers.get("Retry-After", "2"))
-                        _time.sleep(_wait)
+                        _wait_sec = float(_resp.headers.get("Retry-After", "2"))
+                        print(f"[SEO] 429 rate limit, waiting {_wait_sec}s")
+                        _time.sleep(_wait_sec)
                         continue
                     _resp.raise_for_status()
                     break
@@ -711,9 +715,11 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
                         _url = _part.split(";")[0].strip().strip("<>")
                 _shopify_params = {}
 
+        print(f"[SEO] fetched {len(all_products)} products total")
         if product_ids:
             pid_set = {int(x) for x in product_ids}
             all_products = [p for p in all_products if int(p["id"]) in pid_set]
+            print(f"[SEO] filtered to {len(all_products)} products by pid_set={pid_set}")
 
         if not all_products:
             _update_task(task_id, status="failed", error_message="未找到商品，请检查店铺 Token 是否有效")
@@ -726,8 +732,9 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
             _update_task(task_id, status="failed", error_message="AI API Key 未配置")
             return
 
+        print(f"[SEO] starting AI for {total} products, model={settings.ai_model}")
         # 最多 10 线程并发 AI 调用，90 秒强制超时兜底
-        from concurrent.futures import wait as _wait, FIRST_COMPLETED
+        from concurrent.futures import wait as _wait
         results_map: dict[int, dict] = {}
         with ThreadPoolExecutor(max_workers=min(10, total)) as pool:
             futures = {
@@ -735,6 +742,7 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
                 for i, p in enumerate(all_products)
             }
             done, not_done = _wait(futures, timeout=90)
+            print(f"[SEO] AI done={len(done)} timeout={len(not_done)}")
             for fut in done:
                 results_map[futures[fut]] = fut.result()
             for fut in not_done:
@@ -742,23 +750,21 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
                 results_map[futures[fut]] = {
                     "shopify_product_id": all_products[futures[fut]]["id"],
                     "title": all_products[futures[fut]].get("title", ""),
-                    "image_url": "",
-                    "images": [],
-                    "error": "AI 请求超时",
+                    "image_url": "", "images": [], "error": "AI 请求超时",
                 }
         _update_task(task_id, progress=95)
 
         results = [results_map[i] for i in range(total)]
         success_count = sum(1 for r in results if "error" not in r)
+        print(f"[SEO] success={success_count}/{total}, saving result")
         _update_task(task_id, status="success", progress=100, output_data={
-            "shop_id": shop_id,
-            "domain": domain,
-            "total": total,
-            "success": success_count,
-            "products": results,
+            "shop_id": shop_id, "domain": domain,
+            "total": total, "success": success_count, "products": results,
         })
 
     except Exception as e:
+        import traceback
+        print(f"[SEO] EXCEPTION: {e}\n{traceback.format_exc()}")
         _update_task(task_id, status="failed", error_message=str(e))
 
 
