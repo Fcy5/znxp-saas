@@ -589,14 +589,29 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
         target_audience = shop.get("target_audience") or "US buyers looking for personalized gifts"
         brand_style = (shop.get("profile_summary") or "")[:600]
 
-        import asyncio
-        from app.utils.shopify import list_products as _list_products
         _update_task(task_id, progress=15)
-        all_products = asyncio.run(_list_products(domain, token, limit=250))
+        # 同步拉取 Shopify 商品（避免 asyncio.run 在后台线程中冲突）
+        _shopify_url = f"https://{domain}/admin/api/2024-04/products.json"
+        _shopify_params = {"limit": 250, "fields": "id,title,images,variants,status,product_type,tags,handle,body_html"}
+        _shopify_headers = {"X-Shopify-Access-Token": token, "Content-Type": "application/json"}
+        all_products = []
+        with httpx.Client(timeout=30) as _hc:
+            _url = _shopify_url
+            while _url:
+                _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
+                _resp.raise_for_status()
+                all_products.extend(_resp.json().get("products", []))
+                _link = _resp.headers.get("Link", "")
+                _url = None
+                for _part in _link.split(","):
+                    _part = _part.strip()
+                    if 'rel="next"' in _part:
+                        _url = _part.split(";")[0].strip().strip("<>")
+                _shopify_params = {}
 
         if product_ids:
-            pid_set = set(product_ids)
-            all_products = [p for p in all_products if p["id"] in pid_set]
+            pid_set = {int(x) for x in product_ids}
+            all_products = [p for p in all_products if int(p["id"]) in pid_set]
 
         if not all_products:
             _update_task(task_id, status="failed", error_message="未找到商品，请检查店铺 Token 是否有效")
