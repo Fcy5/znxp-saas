@@ -690,11 +690,18 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
         _shopify_params = {"limit": 250, "fields": "id,title,images,variants,status,product_type,tags,handle,body_html"}
         _shopify_headers = {"X-Shopify-Access-Token": token, "Content-Type": "application/json"}
         all_products = []
+        import time as _time
         with httpx.Client(timeout=30) as _hc:
             _url = _shopify_url
             while _url:
-                _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
-                _resp.raise_for_status()
+                for _attempt in range(3):
+                    _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
+                    if _resp.status_code == 429:
+                        _wait = float(_resp.headers.get("Retry-After", "2"))
+                        _time.sleep(_wait)
+                        continue
+                    _resp.raise_for_status()
+                    break
                 all_products.extend(_resp.json().get("products", []))
                 _link = _resp.headers.get("Link", "")
                 _url = None
