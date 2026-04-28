@@ -234,20 +234,35 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
     page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
     time.sleep(3)
 
-    try:
-        page.wait_for_selector("section.note-item", timeout=20000)
-    except Exception:
+    # 尝试多个选择器（XHS 前端版本迭代后 class 可能变化）
+    NOTE_SELECTORS = [
+        "section.note-item",
+        ".note-item",
+        ".feeds-page .note-item",
+        "[class*='note-item']",
+        ".search-container .note-item",
+    ]
+    found_selector = None
+    for sel in NOTE_SELECTORS:
         try:
-            page.wait_for_selector(".feeds-page .note-item", timeout=10000)
+            page.wait_for_selector(sel, timeout=8000)
+            found_selector = sel
+            logger.info(f"【{keyword}】使用选择器: {sel}")
+            break
         except Exception:
-            logger.warning(f"【{keyword}】等待卡片超时，跳过")
-            page.unroute("**/*xhscdn.com/**", _route_handler)
-            return []
+            continue
+
+    if not found_selector:
+        title = page.title()
+        body_len = len(page.content())
+        logger.warning(f"【{keyword}】所有选择器均未找到。页面标题='{title}' 内容长度={body_len}")
+        page.unroute("**/*xhscdn.com/**", _route_handler)
+        return []
 
     time.sleep(2)
 
     # 慢速滚动加载更多卡片
-    last_count = len(page.query_selector_all("section.note-item"))
+    last_count = len(page.query_selector_all(found_selector))
     no_change = 0
     viewport_h = page.viewport_size["height"] if page.viewport_size else 900
     scroll_y = 0
@@ -255,7 +270,7 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
         scroll_y += viewport_h // 2   # 每次滚半屏，更慢更仔细
         page.evaluate(f"window.scrollTo(0, {scroll_y})")
         time.sleep(1.5)
-        new_count = len(page.query_selector_all("section.note-item"))
+        new_count = len(page.query_selector_all(found_selector))
         at_bottom = page.evaluate("window.scrollY + window.innerHeight >= document.body.scrollHeight - 100")
         if at_bottom:
             if new_count == last_count:
@@ -271,9 +286,9 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
 
     # 收集所有卡片 img src URL，强制通过 new Image() 触发浏览器加载
     all_img_srcs = page.evaluate("""
-        () => {
+        (sel) => {
             const urls = [];
-            document.querySelectorAll('section.note-item img').forEach(img => {
+            document.querySelectorAll(sel + ' img').forEach(img => {
                 const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
                 if (src && src.includes('xhscdn.com') && !src.includes('avatar')) {
                     urls.push(src);
@@ -281,7 +296,7 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
             });
             return [...new Set(urls)];
         }
-    """)
+    """, found_selector)
     logger.info(f"  发现 {len(all_img_srcs)} 个商品图 URL，强制加载...")
 
     # 强制通过 new Image() 触发 HTTP 请求（绕过 loading=lazy 限制）
@@ -301,7 +316,7 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
 
     # 解析卡片
     products = []
-    for card in page.query_selector_all("section.note-item"):
+    for card in page.query_selector_all(found_selector):
         try:
             title_el = card.query_selector(".footer .title") or card.query_selector(".title")
             title = title_el.inner_text().strip() if title_el else ""
@@ -399,11 +414,12 @@ def run_spider(keywords: list = None, max_scrolls: int = 10, cookies_path: str =
                 for c in cookies:
                     if not c.get("sameSite") or c["sameSite"] is None:
                         c["sameSite"] = "Lax"
+                    # expirationDate (Chrome扩展格式) → expires (Playwright格式)
+                    if "expirationDate" in c:
+                        c["expires"] = int(c.pop("expirationDate"))
                     # 去掉 Playwright 不认识的字段
-                    for key in ("hostOnly", "session", "storeId", "expirationDate"):
+                    for key in ("hostOnly", "session", "storeId"):
                         c.pop(key, None)
-                    if "expirationDate" not in c and "expires" not in c:
-                        pass  # 无过期时间也可以
                 context.add_cookies(cookies)
                 logger.info(f"已注入 {len(cookies)} 条 cookies")
             else:

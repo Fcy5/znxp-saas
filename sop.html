@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跨境独立站运营 SOP 标准流程手册 v2.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif; font-size: 13px; color: #1a1a2e; background: #f8f9fc; line-height: 1.7; }
+
+  .cover { width:210mm; min-height:297mm; margin:0 auto 40px; background:linear-gradient(135deg,#0f0c29,#302b63,#24243e); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 50px; color:white; position:relative; overflow:hidden; page-break-after:always; }
+  .cover::before { content:''; position:absolute; width:400px; height:400px; background:radial-gradient(circle,rgba(99,102,241,0.3) 0%,transparent 70%); top:-100px; right:-100px; border-radius:50%; }
+  .cover::after { content:''; position:absolute; width:300px; height:300px; background:radial-gradient(circle,rgba(16,185,129,0.2) 0%,transparent 70%); bottom:-50px; left:-50px; border-radius:50%; }
+  .cover-logo { width:64px; height:64px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:700; color:white; margin-bottom:32px; box-shadow:0 20px 60px rgba(99,102,241,0.4); z-index:1; }
+  .cover-tag { background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#a5b4fc; font-size:11px; padding:4px 14px; border-radius:20px; letter-spacing:2px; text-transform:uppercase; margin-bottom:24px; z-index:1; }
+  .cover h1 { font-size:32px; font-weight:700; text-align:center; line-height:1.4; margin-bottom:16px; z-index:1; }
+  .cover-sub { font-size:14px; color:rgba(255,255,255,0.6); text-align:center; margin-bottom:50px; z-index:1; }
+  .cover-modules { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; width:100%; max-width:460px; z-index:1; margin-bottom:50px; }
+  .cover-module { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:14px; text-align:center; }
+  .cover-module .num { font-size:20px; font-weight:700; background:linear-gradient(135deg,#6366f1,#10b981); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:4px; }
+  .cover-module .name { font-size:11px; color:rgba(255,255,255,0.7); }
+  .cover-footer { position:absolute; bottom:40px; font-size:11px; color:rgba(255,255,255,0.35); z-index:1; text-align:center; }
+
+  .page { width:210mm; min-height:297mm; margin:0 auto 30px; background:white; padding:44px 46px; box-shadow:0 4px 40px rgba(0,0,0,0.08); position:relative; }
+  .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:30px; padding-bottom:14px; border-bottom:2px solid #f1f5f9; }
+  .page-header .logo-small { display:flex; align-items:center; gap:8px; font-size:12px; color:#94a3b8; font-weight:500; }
+  .page-header .logo-icon { width:22px; height:22px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:6px; display:inline-block; }
+  .page-header .pg { font-size:11px; color:#cbd5e1; }
+
+  .chapter { display:flex; align-items:center; gap:14px; margin-bottom:22px; }
+  .chapter-num { width:44px; height:44px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:white; flex-shrink:0; box-shadow:0 4px 16px rgba(99,102,241,0.35); }
+  .chapter-num.green { background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 4px 16px rgba(16,185,129,0.35); }
+  .chapter-num.teal  { background:linear-gradient(135deg,#0ea5e9,#0284c7); box-shadow:0 4px 16px rgba(14,165,233,0.35); }
+  .chapter-num.orange{ background:linear-gradient(135deg,#f59e0b,#d97706); box-shadow:0 4px 16px rgba(245,158,11,0.35); }
+  .chapter-num.red   { background:linear-gradient(135deg,#ef4444,#dc2626); box-shadow:0 4px 16px rgba(239,68,68,0.35); }
+  .chapter-text h2 { font-size:19px; font-weight:700; color:#0f172a; margin-bottom:3px; }
+  .chapter-text p { font-size:12px; color:#64748b; }
+
+  .steps { display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
+  .step { display:flex; gap:14px; background:#f8fafc; border:1px solid #e8edf5; border-radius:10px; padding:14px 16px; }
+  .step-num { width:26px; height:26px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:white; flex-shrink:0; margin-top:2px; }
+  .step-num.green  { background:linear-gradient(135deg,#10b981,#059669); }
+  .step-num.teal   { background:linear-gradient(135deg,#0ea5e9,#0284c7); }
+  .step-num.orange { background:linear-gradient(135deg,#f59e0b,#d97706); }
+  .step-num.red    { background:linear-gradient(135deg,#ef4444,#dc2626); }
+  .step-body { flex:1; }
+  .step-title { font-size:13px; font-weight:600; color:#1e293b; margin-bottom:5px; }
+  .step-desc { font-size:11.5px; color:#475569; line-height:1.8; }
+
+  .ai-required { display:inline-flex; align-items:center; gap:4px; background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1)); border:1px solid rgba(99,102,241,0.25); color:#6366f1; font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px; margin-left:6px; vertical-align:middle; }
+  .ai-required::before { content:'🤖'; font-size:10px; }
+
+  .alert { display:flex; gap:10px; border-radius:10px; padding:12px 14px; margin:12px 0; font-size:12px; }
+  .alert.warning { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+  .alert.info    { background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; }
+  .alert.success { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+  .alert.danger  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+  .alert-icon { font-size:15px; flex-shrink:0; }
+
+  .checklist { list-style:none; display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+  .checklist li { display:flex; align-items:flex-start; gap:8px; font-size:11.5px; color:#374151; padding:6px 10px; background:#f9fafb; border-radius:7px; border:1px solid #f3f4f6; }
+  .check-box { width:15px; height:15px; border:1.5px solid #cbd5e1; border-radius:4px; flex-shrink:0; margin-top:2px; }
+
+  .tags { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+  .tag { font-size:11px; padding:3px 9px; border-radius:6px; font-weight:500; }
+  .tag.blue   { background:#eff6ff; color:#3b82f6; border:1px solid #bfdbfe; }
+  .tag.green  { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+  .tag.orange { background:#fffbeb; color:#d97706; border:1px solid #fde68a; }
+  .tag.purple { background:#faf5ff; color:#9333ea; border:1px solid #e9d5ff; }
+  .tag.red    { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+  .tag.teal   { background:#f0f9ff; color:#0284c7; border:1px solid #bae6fd; }
+
+  .timeline { position:relative; padding-left:24px; margin:10px 0; }
+  .timeline::before { content:''; position:absolute; left:7px; top:8px; bottom:8px; width:2px; background:linear-gradient(to bottom,#6366f1,#10b981); border-radius:2px; }
+  .timeline-item { position:relative; margin-bottom:12px; }
+  .timeline-item::before { content:''; position:absolute; left:-20px; top:6px; width:8px; height:8px; background:#6366f1; border-radius:50%; border:2px solid white; box-shadow:0 0 0 2px #6366f1; }
+  .timeline-item .tl-time { font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:2px; }
+  .timeline-item .tl-text { font-size:11.5px; color:#374151; }
+
+  .table-wrap { overflow:hidden; border-radius:9px; border:1px solid #e2e8f0; margin:12px 0; }
+  table { width:100%; border-collapse:collapse; font-size:11.5px; }
+  th { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:white; font-weight:600; padding:9px 12px; text-align:left; }
+  th.green-h { background:linear-gradient(135deg,#10b981,#059669); }
+  th.orange-h{ background:linear-gradient(135deg,#f59e0b,#d97706); }
+  th.red-h   { background:linear-gradient(135deg,#ef4444,#dc2626); }
+  th.teal-h  { background:linear-gradient(135deg,#0ea5e9,#0284c7); }
+  td { padding:8px 12px; border-bottom:1px solid #f1f5f9; color:#374151; }
+  tr:last-child td { border-bottom:none; }
+  tr:nth-child(even) td { background:#f8fafc; }
+
+  .divider { border:none; border-top:1px solid #f1f5f9; margin:18px 0; }
+  .section-title { font-size:13px; font-weight:700; color:#1e293b; margin:18px 0 10px; display:flex; align-items:center; gap:7px; }
+  .section-title::before { content:''; width:3px; height:15px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:2px; }
+  .section-title.green::before { background:linear-gradient(135deg,#10b981,#059669); }
+  .section-title.orange::before{ background:linear-gradient(135deg,#f59e0b,#d97706); }
+  .section-title.red::before   { background:linear-gradient(135deg,#ef4444,#dc2626); }
+  .section-title.teal::before  { background:linear-gradient(135deg,#0ea5e9,#0284c7); }
+
+  .flowchart { display:flex; align-items:center; gap:0; margin:12px 0; flex-wrap:wrap; justify-content:center; }
+  .flow-box { background:linear-gradient(135deg,#f8faff,#f0f4ff); border:1.5px solid #c7d2fe; border-radius:9px; padding:8px 12px; text-align:center; font-size:11px; font-weight:600; color:#3730a3; min-width:72px; }
+  .flow-box.green { background:linear-gradient(135deg,#f0fdf8,#dcfce7); border-color:#86efac; color:#166534; }
+  .flow-arrow { font-size:14px; color:#a5b4fc; padding:0 4px; }
+
+  .formula-box { background:linear-gradient(135deg,#faf5ff,#f5f3ff); border:2px solid #c4b5fd; border-radius:12px; padding:16px 20px; margin:12px 0; }
+  .formula-box .formula-title { font-size:12px; font-weight:700; color:#7c3aed; margin-bottom:8px; }
+  .formula-box .formula-main { font-size:14px; font-weight:700; color:#4c1d95; margin-bottom:6px; }
+  .formula-box .formula-note { font-size:11px; color:#6d28d9; line-height:1.8; }
+
+  .score-badge { display:inline-flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:white; font-size:10px; font-weight:700; padding:2px 8px; border-radius:12px; }
+  .score-badge.green { background:linear-gradient(135deg,#10b981,#059669); }
+
+  .page-footer { position:absolute; bottom:24px; left:46px; right:46px; display:flex; justify-content:space-between; align-items:center; font-size:10px; color:#cbd5e1; border-top:1px solid #f1f5f9; padding-top:8px; }
+
+  @media print {
+    body { background:white; }
+    .cover, .page { box-shadow:none; margin:0; page-break-after:always; }
+    .page { page-break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 封面 ═══════════ -->
+<div class="cover">
+  <div class="cover-logo">Z</div>
+  <div class="cover-tag">Standard Operating Procedure · v2.0</div>
+  <h1>跨境独立站运营<br>SOP 标准流程手册</h1>
+  <div class="cover-sub">选品评估 · 商品上架与推广 · 独立站AI诊断 · 社媒发布 · 邮件营销</div>
+  <div class="cover-modules">
+    <div class="cover-module"><div class="num">01</div><div class="name">选品评估</div></div>
+    <div class="cover-module"><div class="num">02</div><div class="name">商品上架推广</div></div>
+    <div class="cover-module"><div class="num">03</div><div class="name">独立站AI诊断</div></div>
+    <div class="cover-module"><div class="num">04</div><div class="name">社媒发布</div></div>
+    <div class="cover-module"><div class="num">05</div><div class="name">邮件营销</div></div>
+    <div class="cover-module"><div class="num">附</div><div class="name">每日节奏</div></div>
+  </div>
+  <div class="cover-footer">ZNXP SaaS · 跨境运营标准化体系 · 2026 · v2.0</div>
+</div>
+
+
+<!-- ═══════════ 第01章 选品流程 — 七维评估 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 2 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num">01</div>
+    <div class="chapter-text">
+      <h2>选品流程 — 七维综合评估体系</h2>
+      <p>所有维度数据全部呈现，AI综合加权打分，数据说话不靠感觉</p>
+    </div>
+  </div>
+
+  <div class="alert info">
+    <div class="alert-icon">📌</div>
+    <div><strong>核心原则：</strong>不能仅靠AI评分决策——必须查看每一个维度的原始数据，理解数据背后的逻辑，再结合AI综合评分做判断。<strong>利润维度一票否决制</strong>：任何商品若ROI预期 &lt; 120%，无论其他维度多高，直接否决。</div>
+  </div>
+
+  <div class="section-title">七大评估维度 · 权重与评分标准</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>维度</th>
+        <th>权重</th>
+        <th>核心指标（必须全部查看原始数据）</th>
+        <th>满分标准</th>
+      </tr>
+      <tr>
+        <td><strong>① 广告验证</strong></td>
+        <td><span class="score-badge">25%</span></td>
+        <td>FB在投广告主数量 / 最长在投时长 / 单条互动量(点赞+评论+分享) / 广告视频完播率</td>
+        <td>广告主≥5 / 在投≥21天 / 互动≥500 / 完播率&gt;20%</td>
+      </tr>
+      <tr>
+        <td><strong>② 社媒热度</strong></td>
+        <td><span class="score-badge">20%</span></td>
+        <td>TikTok 7天相关视频总播放量 / 点赞≥500的小红书笔记数 / Instagram话题帖量 / YouTube评测数</td>
+        <td>TikTok总播≥500万 / 小红书≥10条 / IG话题≥5000帖</td>
+      </tr>
+      <tr>
+        <td><strong>③ 利润空间</strong><br><small style="color:#ef4444;font-weight:600;">★一票否决</small></td>
+        <td><span class="score-badge">20%</span></td>
+        <td>供应商最低价(询≥3家) / 尾程运费 / 包装+手续费 / 预估ROI / 竞品定价区间</td>
+        <td>ROI≥150% / 毛利率≥50% / 运费≤售价15%</td>
+      </tr>
+      <tr>
+        <td><strong>④ 市场竞争</strong></td>
+        <td><span class="score-badge">15%</span></td>
+        <td>同类Shopify卖家数 / 头部卖家市占率 / 差异化切入点 / 知识产权侵权风险</td>
+        <td>无主导垄断卖家 / 有明确差异化空间 / 无IP风险</td>
+      </tr>
+      <tr>
+        <td><strong>⑤ 产品质量</strong></td>
+        <td><span class="score-badge">10%</span></td>
+        <td>1688/AliExpress综合评分 / 供应商退货率 / 定制复杂度 / 物流适配性(尺寸/重量/易碎)</td>
+        <td>评分≥4.2 / 退货率&lt;3% / 物流无障碍</td>
+      </tr>
+      <tr>
+        <td><strong>⑥ 趋势时效</strong></td>
+        <td><span class="score-badge">5%</span></td>
+        <td>Google Trends 12个月曲线(截图存档) / 是否季节性产品 / 当前处于趋势何位置</td>
+        <td>趋势上升或平稳 / 非临近旺季末尾 / 非夕阳品类</td>
+      </tr>
+      <tr>
+        <td><strong>⑦ 受众匹配</strong></td>
+        <td><span class="score-badge">5%</span></td>
+        <td>目标人群画像清晰度 / 与现有店铺客群重叠度 / 复购周期 / 送礼属性强弱</td>
+        <td>画像明确 / 与现有客群重叠≥60% / 有复购潜力</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="alert success">
+    <div class="alert-icon">✅</div>
+    <div>
+      <strong>AI综合评分解读：</strong>将以上7个维度的原始数据全部输入AI，AI返回各维度得分（0-100）及加权综合分。<br>
+      <strong>综合分 ≥ 75分</strong> + <strong>利润维度 ≥ 60分</strong> → 进入测品名单 ｜
+      综合分 60-74分 → 待观察，再收集1周数据 ｜
+      综合分 &lt; 60分 或 利润分 &lt; 60分 → 直接淘汰
+    </div>
+  </div>
+
+  <div class="section-title">数据源获取路径</div>
+  <div class="tags">
+    <span class="tag purple">FB广告库 → facebook.com/ads/library</span>
+    <span class="tag red">TikTok → TikTok Creative Center热榜</span>
+    <span class="tag orange">小红书 → 关键词搜索笔记</span>
+    <span class="tag blue">供应商报价 → 1688 / AliExpress</span>
+    <span class="tag green">趋势 → Google Trends</span>
+    <span class="tag teal">竞品分析 → SimilarWeb / Shopify商店逆查</span>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第01章 选品流程·七维评估</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 第01章 选品流程 — 操作步骤 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 3 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num">01</div>
+    <div class="chapter-text">
+      <h2>选品流程 — 操作执行步骤</h2>
+      <p>每一步必须完成，不允许跳步，完成后在检查表打勾存档</p>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">FB广告库初筛（每日09:30开始，30分钟内完成）</div>
+        <div class="step-desc">
+          进入 facebook.com/ads/library，按品类关键词搜索（如 custom gift / personalized / couple）<br>
+          筛选条件：<strong>国家选美国/英国/澳洲</strong>，广告类型选全部，记录以下数据并截图存档：<br>
+          · 广告主名称 + 官网域名（逆查Shopify商品结构）<br>
+          · 在投时长（日期范围）：低于14天不记录<br>
+          · 互动量（点赞+评论+分享）：低于200不记录<br>
+          · 广告形式（视频/图文/轮播）：视频广告优先<br>
+          每日目标：记录5-8个候选广告主，填入「选品候选记录表」
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">TikTok + 小红书热度交叉验证</div>
+        <div class="step-desc">
+          TikTok Creative Center搜索同款关键词：<br>
+          · 筛选近7天视频，播放量排序，记录TOP5的播放量总和<br>
+          · 注意评论区是否有购买意向留言（"where to buy" / "link?"）<br>
+          小红书搜索同款：点赞≥500笔记数量，评论中是否有购买询问<br>
+          <strong>两平台都有热度 → 优先级自动上升一档</strong>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">供应链询价（利润维度，一票否决关键步骤）</div>
+        <div class="step-desc">
+          在1688搜索同款，联系≥3家供应商询价，重点问：<br>
+          · 1件起批价格（不要问MOQ）<br>
+          · 定制/印刷附加费<br>
+          · 发货周期（注意：&gt;7天生产期需要提示客户）<br>
+          计算总成本 = 供货价 + 尾程运费 + 包装$0.5-2 + 支付手续费(售价×3%)<br>
+          <strong>若任何供应商方案ROI &lt; 120%，本商品直接停止评估</strong>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">平台录入 + AI七维综合打分 <span class="ai-required">AI 必做</span></div>
+        <div class="step-desc">
+          在ZNXP平台「选品大厅」找到对应商品，或手动新增，填写所有采集到的原始数据：<br>
+          fb_ad_count / fb_ad_max_days / fb_ad_max_engagement / tiktok_views_7d / 供货价 / 竞品售价区间<br>
+          点击「AI综合评分」，系统按七维模型打分，<strong>必须查看每个维度的分项得分，不能只看总分</strong><br>
+          将评分截图 + 原始数据一并存入选品候选记录表
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">Google Trends趋势核查</div>
+        <div class="step-desc">
+          在Google Trends输入商品核心关键词，查看：<br>
+          · 过去12个月趋势（截图，标注当前所在趋势位置）<br>
+          · 相关搜索词（发现长尾词机会）<br>
+          · 地区热度分布（确认目标市场是否有需求）<br>
+          季节性商品：确认当前时间距旺季还有≥6周，否则推迟到下个周期
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-title">加入选品库 + 周会评审</div>
+        <div class="step-desc">
+          满足条件（综合分≥75 + 利润分≥60）→ 点击「加入我的选品库」，备注：<br>
+          来源渠道 / 竞品均价 / 预期定价 / 目标受众一句话描述 / 供应商联系方式<br>
+          <strong>每周一选品会议：</strong>团队评审本周所有候选，投票选出5-8件进入「本周测品名单」<br>
+          同时测品上限：<strong>≤ 12件</strong>（超过此数广告预算分散，数据无效）
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <div class="step-title">测品 & 淘汰机制（上架后执行）</div>
+        <div class="step-desc">
+
+          <strong>【前置：测品有效性判定】</strong><br>
+          以下三个流量渠道，至少满足 <strong>2项</strong>，才算进入有效测品计时；否则补足后重新计时，不计入淘汰判断：<br>
+          &nbsp;&nbsp;① <strong>付费广告</strong>：已投放广告预算 ≥ $30，且广告正常运行 ≥ 3天<br>
+          &nbsp;&nbsp;② <strong>自然流量</strong>：商品页UV ≥ 100（7天累计，来源：SEO / 直接访问 / 邮件）<br>
+          &nbsp;&nbsp;③ <strong>社媒发布</strong>：TikTok / Instagram / Facebook 已发布 ≥ 2条含商品链接内容<br>
+          <br>
+
+          <strong>【第一阶段：7天生死线】</strong><br>
+          · 测品预算：每件 $50–100 广告费，周期7天<br>
+          · 7天0单，且已满足「有效测品」前置条件 → <strong>立即下架</strong>，按以下6个维度归档失败原因：<br>
+          &nbsp;&nbsp;- 价格：加购量高但付款率低（加购未付款率 &gt; 30%）→ 定价可能偏高<br>
+          &nbsp;&nbsp;- 图片 / 落地页：广告展示量高但点击率 CTR &lt; 1% → 主图或文案吸引力不足<br>
+          &nbsp;&nbsp;- 受众：广告 CPM 高、频次低、点击极少 → 受众定向有偏差<br>
+          &nbsp;&nbsp;- 平台差异：分别记录 FB / TikTok / Google 各渠道 CTR 与 ROAS，找出最差短板<br>
+          &nbsp;&nbsp;- 社媒内容：帖子平均互动率 &lt; 1% → 内容方向与目标人群不匹配<br>
+          &nbsp;&nbsp;- 时机：上架时间是否错过节日 / 季节窗口期（如情人节品在2月5日后上架）<br>
+          · 7天0单，但「有效测品」未满足（未投广告 + 未发社媒 + 自然UV极低）→ <strong>不算有效失败</strong>，补足流量后重新计时7天<br>
+          <br>
+
+          <strong>【第二阶段：14天 ROAS 预警 → 进入优化期】</strong><br>
+          · <strong>触发条件A（已投广告）</strong>：上架14天，累计广告花费 ≥ $80，且 ROAS &lt; 1.5<br>
+          · <strong>触发条件B（未投广告，依赖自然流量 / 社媒）</strong>：上架14天，订单数 &lt; 3单<br>
+          · 进入优化期后，须在 <strong>48小时内</strong> 完成以下至少 <strong>2项</strong> 干预措施，并记录干预时间和具体改动：<br>
+          &nbsp;&nbsp;- 主图 A/B 测试：新旧图各跑3天，对比 CTR 变化<br>
+          &nbsp;&nbsp;- 重写广告文案 / 商品描述：对标竞品 Top 广告的语言风格<br>
+          &nbsp;&nbsp;- 调整定价：降价 5–15% 测转化率，或小幅升价 测高端受众接受度<br>
+          &nbsp;&nbsp;- 重置广告受众：扩宽兴趣词，或切换 LAL 相似受众<br>
+          &nbsp;&nbsp;- 补充社媒内容：额外发布 ≥ 3条不同角度内容（开箱 / 穿搭对比 / 使用场景）<br>
+          <br>
+
+          <strong>【第三阶段：优化后14天最终裁决 → 永久淘汰 或 留存】</strong><br>
+          · 优化后14天：ROAS 仍 &lt; 1.5（投广告场景），或订单无明显增长（自然/社媒场景）→ <strong>永久淘汰</strong><br>
+          · 永久淘汰商品进入「避坑库」，必须完整填写以下字段方可归档：<br>
+          &nbsp;&nbsp;- 商品ID / 品名 / 上架日期 / 下架日期<br>
+          &nbsp;&nbsp;- 累计广告花费 / 累计订单数 / 最终 ROAS（无广告填 N/A）<br>
+          &nbsp;&nbsp;- 流量渠道覆盖情况：广告 ✓/✗ &nbsp; 自然流量 ✓/✗ &nbsp; 社媒发布 ✓/✗<br>
+          &nbsp;&nbsp;- 失败主因（从第一阶段6个维度中选1–2个，写具体数据支撑）<br>
+          &nbsp;&nbsp;- 优化措施记录：做了什么 → 结果数据如何变化<br>
+          &nbsp;&nbsp;- 是否可再激活标记：季节性（标记旺季窗口）/ 换平台测试 / 换受众后重试
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert warning">
+    <div class="alert-icon">⚠️</div>
+    <div><strong>禁止行为：</strong>禁止凭感觉或"好看"加入选品库 ｜ 禁止跳过供应商询价直接上架 ｜ 禁止同时测品超过12件 ｜ 禁止在季节性商品旺季最后4周才开始备货测品</div>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第01章 选品流程·操作步骤</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 第02章 商品上架与社媒推广流程 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 4 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num green">02</div>
+    <div class="chapter-text">
+      <h2>商品上架与社媒推广流程</h2>
+      <p>整改完成才能上架，上架完成才能推广——顺序不可颠倒</p>
+    </div>
+  </div>
+
+  <div class="section-title green">标准流程（必须按序执行）</div>
+  <div class="flowchart">
+    <div class="flow-box">① 商品导入<br><small>草稿状态</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">② SEO整改<br><small>AI优化</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">③ 描述整改<br><small>300字+</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">④ 素材生产<br><small>图片/视频</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">⑤ ROI定价<br><small>≥120%</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">⑥ 审核上架<br><small>检查清单</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">⑦ 推送GMC<br><small>+社媒</small></div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num green">1</div>
+      <div class="step-body">
+        <div class="step-title">商品导入 Shopify（草稿状态，禁止直接上架）</div>
+        <div class="step-desc">
+          通过「改款上架」功能推送至目标店铺，初始状态强制设为<strong>Draft（草稿）</strong><br>
+          必须填写完整：SKU标识 / 尺寸变体 / 重量（运费计算用）/ 供货商信息<br>
+          主图要求：≥ 1000×1000px，纯白底或生活场景，无水印，无竞品Logo，≥ 3张<br>
+          每次导入商品数量：≤ 10件/天（保证整改质量）
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num green">2</div>
+      <div class="step-body">
+        <div class="step-title">AI SEO 优化 <span class="ai-required">AI 必做</span></div>
+        <div class="step-desc">
+          进入「Shopify AI优化」→ 选择店铺 → 勾选商品 → 一键SEO优化<br>
+          AI自动生成：SEO标题（含核心关键词，≤70字符）/ Meta描述（含关键词，≤155字符）/ 图片Alt标签（每张不同）/ 结构化数据JSON-LD<br>
+          <strong>人工审核要点：</strong>关键词是否自然融入（非堆砌）/ 标题是否有吸引力 / 描述是否包含CTA<br>
+          审核通过后点击「应用优化」，写入Shopify
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num green">3</div>
+      <div class="step-body">
+        <div class="step-title">商品描述整改标准</div>
+        <div class="step-desc">
+          <strong>结构（缺一不可）：</strong>① 痛点引入（情感共鸣，1-2句）→ ② 产品如何解决问题 → ③ 核心卖点3-5条（加粗）→ ④ 规格参数（材质/尺寸/重量）→ ⑤ 定制说明（如有）→ ⑥ 配送时效<br>
+          字数：英文≥300词 / 中文≥200字，禁止复制竞品原文<br>
+          禁用词：best / cheapest / guaranteed / cure / #1（触发广告政策违规）<br>
+          加分项：嵌入场景化使用图片 / 添加FAQ（减少客服压力）
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num green">4</div>
+      <div class="step-body">
+        <div class="step-title">素材生产 — AI图生视频 <span class="ai-required">AI 必做</span></div>
+        <div class="step-desc">
+          进入商品详情Drawer → 底部「AI视频 & 社媒素材」→ 选择主图 → 点击生成<br>
+          等待60-120秒，生成3-8秒展示视频（wan2.7-i2v模型）<br>
+          用途规划：TikTok有机流量 / Facebook视频广告 / Instagram Reels / GMC购物广告<br>
+          下载后按「品牌-SKU-日期」命名存入素材库，不要重复生成相同主图
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num green">5</div>
+      <div class="step-body">
+        <div class="step-title">ROI定价公式（此步骤完成前禁止上架）</div>
+        <div class="step-desc">
+          <strong>总成本计算：</strong>供货价 + 尾程运费 + 包装费($0.5-2) + 支付手续费(售价×3%) + 预估广告成本/件($2-5)<br>
+          <strong>最低定价 = 总成本 × 2.2（保证ROI ≥ 120%）</strong><br>
+          推荐定价 = 总成本 × 2.5-3.5（ROI 150%-250%，为广告优化留空间）<br>
+          心理定价：取推荐定价后，调整为$X4.99 / $X9.99格式<br>
+          对比价（Compare at Price）= 推荐定价 × 1.3-1.5，制造折扣感<br>
+          批量调价使用平台「批量改价」功能，禁止手动逐一修改
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="formula-box">
+    <div class="formula-title">📐 ROI定价快速参照表</div>
+    <div class="formula-main">最低售价 = 总成本 × 2.2 ｜ 推荐售价 = 总成本 × 3.0</div>
+    <div class="formula-note">
+      总成本$8 → 最低$17.6 → 推荐$24 → 定价<strong>$23.99</strong> ｜
+      总成本$12 → 最低$26.4 → 推荐$36 → 定价<strong>$35.99</strong> ｜
+      总成本$18 → 最低$39.6 → 推荐$54 → 定价<strong>$54.99</strong> ｜
+      总成本$25 → 最低$55 → 推荐$75 → 定价<strong>$74.99</strong>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num green">6</div>
+      <div class="step-body">
+        <div class="step-title">上架前最终检查清单（必须全部勾选才能切换状态为Active）</div>
+        <div class="step-desc">
+          <ul class="checklist" style="margin-top:6px;">
+            <li><span class="check-box"></span>主图≥3张，无水印，无竞品Logo，最大边≥1000px</li>
+            <li><span class="check-box"></span>SEO标题已优化，含核心关键词，≤70字符</li>
+            <li><span class="check-box"></span>Meta描述已优化，含关键词和CTA，≤155字符</li>
+            <li><span class="check-box"></span>商品描述≥300词，含痛点+卖点+规格+配送时效</li>
+            <li><span class="check-box"></span>价格已按ROI公式设定，含Compare at Price</li>
+            <li><span class="check-box"></span>库存设置正确（或勾选无限库存）</li>
+            <li><span class="check-box"></span>标签(Tags)已填写（品类+受众+节日关键词）</li>
+            <li><span class="check-box"></span>AI视频素材已生成并存档</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num green">7</div>
+      <div class="step-body">
+        <div class="step-title">上架后立即推送 — GMC + 社媒</div>
+        <div class="step-desc">
+          <strong>推送GMC：</strong>进入「Google购物广告」→ 选择店铺 → 勾选刚上架商品 → 推送<br>
+          GMC审核周期24-72小时，期间同步进行社媒推广<br>
+          <strong>推送社媒：</strong>使用AI生成的视频素材，按第04章《社媒发布流程》在TikTok/Facebook/Instagram同步发布新品帖<br>
+          上架后第1周：每天监控订单数据，若3天0单立即排查（价格/主图/受众定向问题）
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第02章 商品上架与社媒推广</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 第03章 独立站AI诊断 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 5 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num teal">03</div>
+    <div class="chapter-text">
+      <h2>独立站 AI 诊断流程</h2>
+      <p>将完整独立站喂给AI，逐页检查布局排版与转化障碍，每月至少执行一次</p>
+    </div>
+  </div>
+
+  <div class="alert info">
+    <div class="alert-icon">🔍</div>
+    <div><strong>执行时机：</strong>新店上线前必做 / 每月第一个周一执行 / 广告ROAS突然下降20%以上时立即执行。诊断结果需形成书面优化清单，按优先级在2周内完成整改。</div>
+  </div>
+
+  <div class="section-title teal">第一步 — 截图准备（将以下页面全截图，发给AI）</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="teal-h">需要截图的页面</th>
+        <th class="teal-h">截图要求</th>
+        <th class="teal-h">截图工具</th>
+      </tr>
+      <tr><td><strong>首页（Homepage）</strong></td><td>全页滚动截图，桌面端 + 手机端各一张</td><td>GoFullPage插件 / Chrome截图</td></tr>
+      <tr><td><strong>商品列表页（Collection）</strong></td><td>最热门品类页，含筛选栏</td><td>同上</td></tr>
+      <tr><td><strong>商品详情页（PDP）</strong></td><td>选最畅销商品，全页截图</td><td>同上</td></tr>
+      <tr><td><strong>购物车页（Cart）</strong></td><td>含至少1件商品的状态</td><td>同上</td></tr>
+      <tr><td><strong>结账页（Checkout）</strong></td><td>手机端截图（70%+用户用手机结账）</td><td>Chrome手机模拟器</td></tr>
+      <tr><td><strong>404页 / 关于我们页</strong></td><td>检查品牌信任度元素</td><td>同上</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title teal">第二步 — AI诊断提示词模板 <span class="ai-required">AI 必做</span></div>
+  <div class="alert info" style="background:#f0f9ff; border-color:#bae6fd; color:#0c4a6e;">
+    <div class="alert-icon">💬</div>
+    <div>
+      <strong>发给AI的Prompt（逐页使用）：</strong><br>
+      「你是一位资深跨境电商独立站转化优化专家。我将给你一张我的Shopify独立站【页面名称】的截图。请从以下维度逐一分析并给出具体优化建议：<br>
+      1. 视觉层次与信息架构（用户是否能在3秒内找到最重要内容）<br>
+      2. CTA按钮的位置、颜色、文字是否足够突出（是否被忽视）<br>
+      3. 字体大小与可读性（手机端是否≥14px）<br>
+      4. 白空间使用（是否拥挤/空旷）<br>
+      5. 信任元素（评价/安全支付/退换货政策是否可见）<br>
+      6. 图片质量与加载速度预判<br>
+      7. 移动端适配问题（按钮是否好点击，表单是否方便填写）<br>
+      8. 转化障碍点（哪里最可能导致用户离开）<br>
+      请列出TOP3最紧急需要修复的问题，并给出具体操作建议。」
+    </div>
+  </div>
+
+  <div class="section-title teal">第三步 — 常见问题快速修复指南</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="teal-h">问题类型</th>
+        <th class="teal-h">症状</th>
+        <th class="teal-h">快速修复方案</th>
+        <th class="teal-h">优先级</th>
+      </tr>
+      <tr>
+        <td><strong>首页英雄区无吸引力</strong></td>
+        <td>Banner图文字看不清 / 无明确CTA</td>
+        <td>更换高对比度Banner，加大标题字号，CTA按钮改为亮色（橙/绿）</td>
+        <td><span class="tag red">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>手机端按钮太小</strong></td>
+        <td>拇指难以点击，加购失败</td>
+        <td>Add to Cart按钮高度改为≥52px，字体≥16px，颜色强对比</td>
+        <td><span class="tag red">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>无信任元素</strong></td>
+        <td>用户不敢下单</td>
+        <td>在页脚/购物车页加：⭐评分展示 / 🔒安全支付图标 / 退款保障文字</td>
+        <td><span class="tag orange">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>页面加载慢</strong></td>
+        <td>图片过大，跳出率高</td>
+        <td>所有商品图压缩至≤300KB，使用WebP格式，启用Shopify CDN</td>
+        <td><span class="tag orange">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>结账流程过长</strong></td>
+        <td>填写步骤多，弃单率高</td>
+        <td>启用Shopify一页结账 / 添加Shop Pay / PayPal快捷支付</td>
+        <td><span class="tag orange">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>商品描述无结构</strong></td>
+        <td>大段文字无格式，用户不读</td>
+        <td>改为图标+短句列表，关键词加粗，添加产品规格表格</td>
+        <td><span class="tag blue">P2</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section-title teal">第四步 — 整改追踪</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num teal">✓</div>
+      <div class="step-body">
+        <div class="step-title">整改结果记录与A/B验证</div>
+        <div class="step-desc">
+          每次诊断后建立「整改任务清单」（优先级P0→P1→P2逐步执行）<br>
+          关键改动上线后：用Google Analytics对比改动前后7天的跳出率、加购率、结账转化率<br>
+          若指标提升 &gt; 5% → 确认改动有效，固化到模板<br>
+          若指标无明显变化 → 再次截图发AI分析，寻找更深层原因<br>
+          整改记录归档，下次月度诊断时作为对比基准
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第03章 独立站AI诊断</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 第04章 社媒发布 — 平台规范与内容创作 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 6 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num orange">04</div>
+    <div class="chapter-text">
+      <h2>社媒发布流程 — 内容创作标准</h2>
+      <p>每条发布内容必须按公式创作，发布后1小时内监控数据，无复盘不发新帖</p>
+    </div>
+  </div>
+
+  <div class="alert danger">
+    <div class="alert-icon">🚫</div>
+    <div><strong>强制要求：</strong>社媒内容发布前100%必须经过AI优化 ｜ 禁止直接复制竞品文案 ｜ 禁止使用未经AI审核的原始描述 ｜ 禁止同一内容在所有平台发完全相同文案（各平台受众和算法不同）</div>
+  </div>
+
+  <div class="section-title orange">各平台发布规范（强制标准，不达标不发）</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="orange-h">平台</th>
+        <th class="orange-h">内容形式</th>
+        <th class="orange-h">规格要求</th>
+        <th class="orange-h">最优发布时段 (EST)</th>
+        <th class="orange-h">频率</th>
+      </tr>
+      <tr>
+        <td><strong>TikTok</strong></td>
+        <td>竖版短视频（优先）</td>
+        <td>9:16 / 1080×1920px / 15-60秒 / 字幕必加</td>
+        <td>7-9点 / 19-23点</td>
+        <td>每日1-2条</td>
+      </tr>
+      <tr>
+        <td><strong>Facebook</strong></td>
+        <td>视频（优先）/ 图文 / Reels</td>
+        <td>视频≥20秒 / 图片1:1或4:5 / 文字&lt;125字符摘要</td>
+        <td>9-11点 / 13-15点 / 19-21点</td>
+        <td>每日1条</td>
+      </tr>
+      <tr>
+        <td><strong>Instagram</strong></td>
+        <td>Reels（优先）/ Feed图 / Stories</td>
+        <td>Reels 9:16 / Feed 1:1或4:5 / Stories 9:16含贴纸</td>
+        <td>11-13点 / 19-21点</td>
+        <td>每日1-2条</td>
+      </tr>
+      <tr>
+        <td><strong>Pinterest</strong></td>
+        <td>长图Pin / 视频Pin</td>
+        <td>2:3比例 / 最小1000×1500px / 标题≤100字符</td>
+        <td>20-23点（全天可排期）</td>
+        <td>每日3-5条</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section-title orange">黄金钩子公式 — 前3秒决定生死 <span class="ai-required">AI 必做</span></div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="orange-h">钩子类型</th>
+        <th class="orange-h">公式</th>
+        <th class="orange-h">适用场景</th>
+        <th class="orange-h">示例</th>
+      </tr>
+      <tr>
+        <td><strong>痛点型</strong></td>
+        <td>你是否一直苦恼于[痛点]？</td>
+        <td>解决型产品，家居/礼品</td>
+        <td>"Still struggling to find a gift that actually means something?"</td>
+      </tr>
+      <tr>
+        <td><strong>震惊型</strong></td>
+        <td>我不敢相信这个[产品]只要[价格]</td>
+        <td>高性价比产品</td>
+        <td>"I can't believe this custom piece costs under $30"</td>
+      </tr>
+      <tr>
+        <td><strong>故事型</strong></td>
+        <td>我[做了某件事]，结果[意外结果]</td>
+        <td>情感类/礼品类</td>
+        <td>"I sent this to my mom on her birthday. She cried."</td>
+      </tr>
+      <tr>
+        <td><strong>数字型</strong></td>
+        <td>[数字]个人都在用的[产品]，你还不知道？</td>
+        <td>社会认同，爆款产品</td>
+        <td>"50,000 people ordered this last month. Here's why."</td>
+      </tr>
+      <tr>
+        <td><strong>对比型</strong></td>
+        <td>花[高价]买[普通品]，不如用[你的产品]</td>
+        <td>高客单价产品</td>
+        <td>"Stop paying $200 for jewelry. This looks identical for $35."</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section-title orange">文案结构公式（正文必须遵循）</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num orange">①</div>
+      <div class="step-body">
+        <div class="step-title">情感钩子（第1句，必须让人停下来）</div>
+        <div class="step-desc">使用上方五种钩子类型之一，简短有力，最多2句话，制造"这说的是我"的共鸣感</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num orange">②</div>
+      <div class="step-body">
+        <div class="step-title">价值陈述（核心卖点，2-3句）</div>
+        <div class="step-desc">具体说明产品能给用户带来什么改变，用场景化语言，而非功能罗列。例："She'll keep it on her desk for years" 比 "High quality material" 更有效</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num orange">③</div>
+      <div class="step-body">
+        <div class="step-title">紧迫感收尾（CTA，必须有时间/数量限制）</div>
+        <div class="step-desc">
+          · 库存稀缺型："Only 47 left in stock — link in bio"<br>
+          · 时间限制型："Free shipping ends Sunday — don't miss it"<br>
+          · 节日型："Order by Dec 20 for guaranteed Christmas delivery"<br>
+          禁止使用模糊CTA如"check it out"或"visit our store"
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num orange">④</div>
+      <div class="step-body">
+        <div class="step-title">Hashtag规范（各平台不同）</div>
+        <div class="step-desc">
+          TikTok：3-5个，1个大词(≥1000万)+2个中词(10-100万)+1-2个精准小词<br>
+          Instagram：8-12个，大中小词混搭，加1个品牌专属标签<br>
+          Facebook：3-5个（算法更看重内容质量，hashtag权重低）<br>
+          Pinterest：10-15个，以描述性关键词为主（用户在搜索）<br>
+          <strong>禁止</strong>：在所有帖子使用完全相同的hashtag组合（触发平台降权）
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第04章 社媒发布·内容创作标准</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 第04章 社媒发布 — 排期与数据复盘 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 7 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num orange">04</div>
+    <div class="chapter-text">
+      <h2>社媒发布流程 — 发布执行与数据复盘</h2>
+      <p>发布是手段，数据是目的，每条内容都要追踪到ROI</p>
+    </div>
+  </div>
+
+  <div class="section-title orange">发布前合规检查（AI必做，5分钟内完成）<span class="ai-required">AI 必做</span></div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num orange">1</div>
+      <div class="step-body">
+        <div class="step-title">AI违禁词扫描</div>
+        <div class="step-desc">
+          将文案复制发给AI，指令：「检查以下文案是否含有Facebook/TikTok/Instagram广告政策违禁词，包括但不限于：
+          健康声明类（cure/heal/treat/prevent disease）/ 绝对化表述（best/greatest/guaranteed results）/
+          夸大数字（make $X in Y days）/ 政治宗教内容 / 年龄歧视性语言。返回通过/不通过，如不通过列出具体违禁词和修改建议。」<br>
+          AI返回「通过」才能进入下一步，否则修改后重新扫描
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num orange">2</div>
+      <div class="step-body">
+        <div class="step-title">配图/视频审核标准</div>
+        <div class="step-desc">
+          · 视频：优先使用AI图生视频（平台生成），或真实开箱/使用场景视频<br>
+          · 图片文字占比：Facebook/Instagram &lt; 20%（超出广告投放受限）<br>
+          · 禁止：未授权明星/公众人物肖像 / 医疗前后对比图 / 含儿童的商业化内容（需特别授权）<br>
+          · 视频前3秒：必须是最吸引眼球的画面，产品出现在首帧或第2秒内
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num orange">3</div>
+      <div class="step-body">
+        <div class="step-title">节假日内容提前排期（节日营销黄金规则）</div>
+        <div class="step-desc">
+          <strong>三波推送策略（以母亲节为例）：</strong><br>
+          · <strong>T-14天（提前2周）：</strong>情感铺垫帖，不销售，建立节日氛围认知<br>
+          · <strong>T-7天（提前1周）：</strong>主推商品+折扣预告，加紧迫感（"早鸟价仅限本周"）<br>
+          · <strong>T-3天（节前3天）：</strong>最后提醒+截止日期强调（"Order now for guaranteed delivery"）<br>
+          · <strong>当天：</strong>不做销售推送，发情感内容（品牌温度）<br>
+          全年重要节日提前在日历标注，至少提前21天开始准备素材
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num orange">4</div>
+      <div class="step-body">
+        <div class="step-title">发布后1小时内监控</div>
+        <div class="step-desc">
+          发布后60分钟内必须检查一次：<br>
+          · 负面评论/投诉 → 30分钟内回复，问题类用私信跟进<br>
+          · 购买意向评论（"how much" / "where to buy" / "link?"）→ 立即回复并引导下单<br>
+          · 异常数据（0播放/0互动超过2小时）→ 检查是否被限流，考虑删除重发<br>
+          · 将实时数据填入「内容追踪表」
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title orange">每周内容日历（周五规划下周）</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="orange-h">星期</th>
+        <th class="orange-h">内容类型</th>
+        <th class="orange-h">发布平台</th>
+        <th class="orange-h">核心目标</th>
+      </tr>
+      <tr><td><strong>周一</strong></td><td>新品/热品推介视频（钩子型）</td><td>TikTok + Reels</td><td>曝光获客</td></tr>
+      <tr><td><strong>周二</strong></td><td>用户晒单/UGC内容（真实评价截图）</td><td>Facebook + Instagram</td><td>建立信任</td></tr>
+      <tr><td><strong>周三</strong></td><td>产品对比/教程内容（高价值干货）</td><td>Pinterest + TikTok</td><td>SEO流量</td></tr>
+      <tr><td><strong>周四</strong></td><td>促销/限时折扣帖（紧迫感）</td><td>全平台</td><td>促销转化</td></tr>
+      <tr><td><strong>周五</strong></td><td>品牌故事/幕后内容（情感连接）</td><td>Instagram + Facebook</td><td>粉丝粘性</td></tr>
+      <tr><td><strong>周六</strong></td><td>周末特惠/礼品推荐</td><td>TikTok + Instagram</td><td>冲单</td></tr>
+      <tr><td><strong>周日</strong></td><td>本周数据复盘 + 下周内容规划（不发帖）</td><td>—</td><td>策略优化</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title orange">每周数据复盘（周五17:00执行）<span class="ai-required">AI 必做</span></div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num orange">→</div>
+      <div class="step-body">
+        <div class="step-title">复盘数据收集与AI分析</div>
+        <div class="step-desc">
+          收集本周所有帖子数据：Reach / Engagement Rate / Link Clicks / ROAS / 新增粉丝数<br>
+          将数据发给AI，指令：「分析以下社媒数据，找出：① 表现最好的3条帖子的共同点（开头类型/话题/视觉风格）；② 表现最差的3条的失败原因；③ 下周内容应该优先复制哪种形式；④ 建议调整发布时段或频率吗？」<br>
+          AI给出建议后，更新下周内容日历，将成功元素复制，失败元素列入禁止清单
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第04章 社媒发布·排期与复盘</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 第05章 邮件营销 — 主题行与正文 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 8 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num red">05</div>
+    <div class="chapter-text">
+      <h2>邮件营销流程 — 主题行·正文·大促设计</h2>
+      <p>主题行决定打开率，促销力度决定下单率，自动化序列决定复购率</p>
+    </div>
+  </div>
+
+  <div class="alert danger">
+    <div class="alert-icon">🚫</div>
+    <div><strong>强制要求：</strong>所有群发邮件主题行和正文必须经过AI优化后才能发送 ｜ 禁止全大写主题行 ｜ 禁止连续3天给同一列表发邮件（退订率爆升）｜ 发送前必须先发测试邮件验证</div>
+  </div>
+
+  <div class="section-title red">主题行写作公式（这一行决定60%的打开率）<span class="ai-required">AI 必做</span></div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="red-h">类型</th>
+        <th class="red-h">公式结构</th>
+        <th class="red-h">高转化示例</th>
+        <th class="red-h">适用场景</th>
+      </tr>
+      <tr>
+        <td><strong>🔥 紧迫型</strong></td>
+        <td>[时间限制] + [折扣/奖励]</td>
+        <td>"⏰ 6 hours left: 35% off ends at midnight"</td>
+        <td>大促/Flash Sale</td>
+      </tr>
+      <tr>
+        <td><strong>😱 好奇型</strong></td>
+        <td>悬念开头 + 不完整信息</td>
+        <td>"We don't usually do this… but here you go 👀"</td>
+        <td>特殊优惠/新品预热</td>
+      </tr>
+      <tr>
+        <td><strong>👋 个性化型</strong></td>
+        <td>[名字], + 场景化陈述</td>
+        <td>"[Name], this was made for someone like you"</td>
+        <td>复购/唤醒邮件</td>
+      </tr>
+      <tr>
+        <td><strong>💰 利益型</strong></td>
+        <td>直接说明获得的好处</td>
+        <td>"Your $10 reward is expiring — use it now"</td>
+        <td>积分/余额唤醒</td>
+      </tr>
+      <tr>
+        <td><strong>🎯 数字型</strong></td>
+        <td>具体数字 + 承诺</td>
+        <td>"3 days. Free shipping. 1 gift she'll never forget"</td>
+        <td>节日/礼品季</td>
+      </tr>
+      <tr>
+        <td><strong>😢 痛点型</strong></td>
+        <td>描述用户正在经历的问题</td>
+        <td>"Still searching for a gift at 11pm? We've got you."</td>
+        <td>节日临近/弃购挽回</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="alert warning" style="margin:10px 0;">
+    <div class="alert-icon">💡</div>
+    <div><strong>主题行黄金法则：</strong>① 字数控制在35-50字符（手机端不被截断）② 每封邮件用AI生成5个版本，25%列表A/B测试，75%发给胜出版本 ③ 表情符号≤2个，放在开头或结尾 ④ 禁用触发垃圾邮件词：free / winner / cash / urgent / CLICK HERE（全大写）</div>
+  </div>
+
+  <div class="section-title red">大促活动力度设计（让人忍不住点击的促销方案）</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="red-h">促销类型</th>
+        <th class="red-h">力度建议</th>
+        <th class="red-h">主题行示例</th>
+        <th class="red-h">持续时间</th>
+      </tr>
+      <tr>
+        <td><strong>Flash Sale 闪购</strong></td>
+        <td>全场30-40%OFF，无门槛</td>
+        <td>"🔥 FLASH SALE: 40% off — 4 hours only"</td>
+        <td>4-8小时</td>
+      </tr>
+      <tr>
+        <td><strong>捆绑优惠</strong></td>
+        <td>买2送1 / 买3件75折</td>
+        <td>"Buy 2, Get 1 FREE — your friends deserve one too"</td>
+        <td>3-5天</td>
+      </tr>
+      <tr>
+        <td><strong>神秘盲盒</strong></td>
+        <td>$X盲盒实值$3X以上</td>
+        <td>"Mystery box: $29 for $90+ in products 🎁"</td>
+        <td>限量50个</td>
+      </tr>
+      <tr>
+        <td><strong>老客专属</strong></td>
+        <td>VIP独享折扣码25-30%，不公开</td>
+        <td>"[Name], your VIP code expires in 48 hours"</td>
+        <td>48小时</td>
+      </tr>
+      <tr>
+        <td><strong>节日大促</strong></td>
+        <td>25-35%OFF + 免运费 + 赠品</td>
+        <td>"🎄 Our biggest sale of the year starts NOW"</td>
+        <td>节日前3-5天</td>
+      </tr>
+      <tr>
+        <td><strong>弃购挽回</strong></td>
+        <td>第2封弃购邮件给5-8%折扣码</td>
+        <td>"You left something behind — here's 8% off to finish"</td>
+        <td>24小时内发</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section-title red">邮件正文结构（150-200词，图文各50%）<span class="ai-required">AI 必做</span></div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num red">①</div>
+      <div class="step-body">
+        <div class="step-title">预头文字 Preheader（40-90字符，主题行的剧透）</div>
+        <div class="step-desc">在收件箱中主题行右侧显示，是第二次吸引打开的机会。示例："Use code FLASH40 before midnight — seriously, tonight only ⏰"</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num red">②</div>
+      <div class="step-body">
+        <div class="step-title">正文结构（缺一不可）</div>
+        <div class="step-desc">
+          · <strong>开头（1-2句）：</strong>情感共鸣或场景描述，不是产品介绍。例："The holidays are 3 weeks away. You've got this."<br>
+          · <strong>主体（3-5句）：</strong>产品核心价值点，用场景化语言，不堆砌功能<br>
+          · <strong>促销信息（醒目展示）：</strong>折扣码单独一行放大加粗，有效期精确到小时<br>
+          · <strong>CTA按钮：</strong>文字用行动词——"Claim My 35% Off" / "Get Yours Before It's Gone" / "Shop the Sale"（禁用"Click Here"）<br>
+          · <strong>底部：</strong>退订链接（CAN-SPAM法规必须）+ 实体地址
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num red">③</div>
+      <div class="step-body">
+        <div class="step-title">发送前垃圾邮件检测 <span class="ai-required">AI 必做</span></div>
+        <div class="step-desc">
+          将完整邮件（主题行+预头+正文）发给AI检查：是否含垃圾邮件触发词 / 主题行是否有全大写 / 图文比例是否失衡（图片&lt;60%）/ 是否有退订链接 / HTML格式是否有问题<br>
+          同时使用mail-tester.com测试邮件评分，目标≥9分再发送
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第05章 邮件营销·主题行与大促设计</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 第05章 邮件营销 — 自动化序列与KPI ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 9 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num red">05</div>
+    <div class="chapter-text">
+      <h2>邮件营销 — 自动化序列 · 列表分层 · KPI</h2>
+      <p>自动化序列是最高ROI的营销动作，配置一次持续产出</p>
+    </div>
+  </div>
+
+  <div class="section-title red">邮件列表分层管理（每月更新一次分层状态）</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="red-h">层级</th>
+        <th class="red-h">定义</th>
+        <th class="red-h">发送频率</th>
+        <th class="red-h">内容策略</th>
+        <th class="red-h">促销力度</th>
+      </tr>
+      <tr>
+        <td><strong>A层 VIP</strong></td>
+        <td>购买≥2次 或 消费≥$100</td>
+        <td>每周1次</td>
+        <td>新品优先预览 + VIP专属折扣</td>
+        <td>25-30%</td>
+      </tr>
+      <tr>
+        <td><strong>B层 活跃</strong></td>
+        <td>90天内有打开或点击</td>
+        <td>每10天1次</td>
+        <td>热销推荐 + 节日促销</td>
+        <td>15-20%</td>
+      </tr>
+      <tr>
+        <td><strong>C层 沉睡</strong></td>
+        <td>90-180天未开</td>
+        <td>每月2次</td>
+        <td>大额折扣唤醒 + 社会认同</td>
+        <td>30-40%（钩回来更重要）</td>
+      </tr>
+      <tr>
+        <td><strong>D层 僵尸</strong></td>
+        <td>180天+未开</td>
+        <td>季度1次</td>
+        <td>最后唤醒邮件，主题："Is this goodbye?"</td>
+        <td>清除前给50%终极折扣</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section-title red">必须配置的7条自动化序列（配置一次，永久运行）</div>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="tl-time">注册后 即时发送</div>
+      <div class="tl-text"><strong>欢迎邮件：</strong>品牌故事（2-3句）+ 10%首单折扣码（72小时有效）+ 最畅销商品推荐。目标打开率 ≥ 50%。主题行："Welcome! Here's 10% off just for you 🎁"</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-time">注册后 第3天</div>
+      <div class="tl-text"><strong>欢迎序列#2：</strong>展示3-5个五星评价截图 + 最热销商品 + 提醒折扣码将在明日到期。主题："Your discount expires tomorrow — don't miss it"</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-time">加购未购 1小时后</div>
+      <div class="tl-text"><strong>弃购挽回#1：</strong>温馨提醒，展示商品图 + 核心卖点，不提折扣。主题："You left something special behind..."</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-time">加购未购 24小时后</div>
+      <div class="tl-text"><strong>弃购挽回#2：</strong>给出8%折扣码，有效期24小时，制造紧迫感 + 展示库存剩余数量。主题："Last chance: 8% off + only 12 left in stock"</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-time">加购未购 72小时后</div>
+      <div class="tl-text"><strong>弃购挽回#3：</strong>社会认同型，展示"XXX people just bought this"，最终关闭折扣。主题："This is our last reminder (we promise)"</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-time">购买后 发货当天</div>
+      <div class="tl-text"><strong>发货确认：</strong>物流单号 + 预计到货日期 + 推荐搭配商品（交叉销售）。主题："Your order is on its way! 🚚 Arrives by [Date]"</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-time">预计收货后 5天</div>
+      <div class="tl-text"><strong>评价邀请：</strong>请求五星好评 + 晒图激励（下次5%折扣码）+ 推荐相关商品复购。主题："How's your order? 🌟 Share your photo and save"</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-time">购买后 30天</div>
+      <div class="tl-text"><strong>复购邮件：</strong>根据购买历史推荐关联商品 + 老客专属折扣（不公开给新客）。主题："[Name], we picked something else you'll love"</div>
+    </div>
+  </div>
+
+  <div class="section-title red">核心KPI监控标准（每周五检查）</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th class="red-h">指标</th>
+        <th class="red-h">健康目标值</th>
+        <th class="red-h">低于此值的紧急处理措施</th>
+      </tr>
+      <tr><td>打开率 Open Rate</td><td>≥ 28%</td><td>&lt; 15%：立即测试新主题行，检查发件域名信誉</td></tr>
+      <tr><td>点击率 CTR</td><td>≥ 3.5%</td><td>&lt; 1.5%：重新设计CTA按钮，优化正文价值陈述</td></tr>
+      <tr><td>转化率</td><td>≥ 1.2%</td><td>&lt; 0.5%：检查落地页，加大折扣力度，减少结账步骤</td></tr>
+      <tr><td>退订率 Unsubscribe</td><td>≤ 0.2%</td><td>&gt; 0.5%：立即暂停发送，检查列表质量和发送频率</td></tr>
+      <tr><td>垃圾邮件举报率</td><td>≤ 0.08%</td><td>&gt; 0.1%：暂停发送，清理无效邮箱，联系ESP支持</td></tr>
+      <tr><td>送达率 Deliverability</td><td>≥ 98%</td><td>&lt; 95%：检查域名SPF/DKIM/DMARC配置，清理硬退信</td></tr>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 第05章 邮件营销·自动化与KPI</span>
+    <span>机密文件，请勿外传</span>
+  </div>
+</div>
+
+
+<!-- ═══════════ 附录：每日工作节奏 ═══════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-small"><span class="logo-icon"></span> ZNXP SaaS 运营 SOP v2.0</div>
+    <div class="pg">第 10 页</div>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num">附</div>
+    <div class="chapter-text">
+      <h2>每日运营节奏 &amp; AI必做节点速查</h2>
+      <p>将SOP固化为每日肌肉记忆，从开机到收工，每件事都在规定时间完成</p>
+    </div>
+  </div>
+
+  <div class="section-title">每日工作时间表（精确到30分钟）</div>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>时间段</th>
+        <th>工作内容（严格执行，超时顺延）</th>
+        <th>输出物</th>
+        <th>工具</th>
+      </tr>
+      <tr>
+        <td><strong>09:00-09:20</strong></td>
+        <td>查看昨日广告数据，标记异常（ROAS下降&gt;20%立即暂停该广告组）</td>
+        <td>异常报告</td>
+        <td>Facebook Ads Manager / GMC</td>
+      </tr>
+      <tr>
+        <td><strong>09:20-10:00</strong></td>
+        <td>选品：FB广告库浏览，按七维表记录3-5个候选，截图存档</td>
+        <td>候选记录表更新</td>
+        <td>ZNXP选品大厅 + FB广告库</td>
+      </tr>
+      <tr>
+        <td><strong>10:00-11:30</strong></td>
+        <td>商品整改：AI SEO优化 + 描述整改 + ROI定价，每次处理2-3件商品</td>
+        <td>商品上架就绪</td>
+        <td>ZNXP Shopify AI优化</td>
+      </tr>
+      <tr>
+        <td><strong>11:30-12:00</strong></td>
+        <td>上架审核：逐一勾选检查清单，通过后切换Active + 推送GMC</td>
+        <td>上架完成</td>
+        <td>Shopify后台 / ZNXP GMC</td>
+      </tr>
+      <tr>
+        <td><strong>14:00-15:00</strong></td>
+        <td>社媒内容：AI生成今日文案 + 违禁词扫描 + 配图审核，排期明日内容</td>
+        <td>内容排期完成</td>
+        <td>ZNXP AI Agent / Buffer</td>
+      </tr>
+      <tr>
+        <td><strong>15:00-15:30</strong></td>
+        <td>发布当日社媒内容，发布后30分钟内监控并回复评论</td>
+        <td>内容发布</td>
+        <td>TikTok / Meta Business Suite</td>
+      </tr>
+      <tr>
+        <td><strong>15:30-16:30</strong></td>
+        <td>回复所有社媒评论/私信/购买咨询；处理客诉（24小时内必须回复）</td>
+        <td>零遗留客诉</td>
+        <td>Meta Business Suite</td>
+      </tr>
+      <tr>
+        <td><strong>16:30-17:00</strong></td>
+        <td>邮件：检查自动化触发情况，准备下次群发文案（AI生成+AI审核）</td>
+        <td>邮件草稿</td>
+        <td>Klaviyo / Mailchimp</td>
+      </tr>
+      <tr>
+        <td><strong>17:00-17:20</strong></td>
+        <td>当日总结：填写数据追踪表，标记明日3件最优先任务</td>
+        <td>追踪表更新</td>
+        <td>飞书 / Notion</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section-title">每周固定任务</div>
+  <div class="table-wrap">
+    <table>
+      <tr><th>星期</th><th>固定任务</th></tr>
+      <tr><td><strong>周一</strong></td><td>选品会议（评审候选 → 确定本周测品名单5-8件）+ 独立站AI诊断（每月第一周执行）</td></tr>
+      <tr><td><strong>周二</strong></td><td>批量AI SEO优化本周选品，推送Shopify，推送GMC</td></tr>
+      <tr><td><strong>周三</strong></td><td>新品邮件发送（AI审核后）+ GMC审核状态跟进</td></tr>
+      <tr><td><strong>周四</strong></td><td>广告素材更新，A/B测试结果汇总，下周广告预算分配</td></tr>
+      <tr><td><strong>周五</strong></td><td>全周数据复盘（广告+社媒+邮件），下周内容日历规划，上周测品淘汰决策</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">AI必做节点速查 — 100%不允许跳过</div>
+  <div class="alert success">
+    <div class="alert-icon">✅</div>
+    <div>
+      <strong>1. 选品七维评分</strong> → ZNXP选品大厅，输入原始数据，查看分项分+综合分<br>
+      <strong>2. 商品SEO优化</strong> → Shopify AI优化页，生成标题/描述/Alt/结构化数据<br>
+      <strong>3. AI视频素材生成</strong> → 商品Drawer → AI视频区域，上架前必须生成<br>
+      <strong>4. 独立站诊断</strong> → 截图喂给AI，按五步诊断提示词逐页分析<br>
+      <strong>5. 社媒文案创作</strong> → AI Agent，按钩子公式+文案结构生成3版选最优<br>
+      <strong>6. 社媒违禁词扫描</strong> → 发布前将文案发AI，返回「通过」才能发布<br>
+      <strong>7. 邮件主题行</strong> → AI生成6种类型各1版，A/B测试选胜出版本<br>
+      <strong>8. 邮件垃圾检测</strong> → 完整邮件发AI + mail-tester.com评分≥9分<br>
+      <strong>9. 数据复盘分析</strong> → 每周五将全部数据发AI，让AI给下周策略建议
+    </div>
+  </div>
+
+  <div class="alert warning">
+    <div class="alert-icon">📌</div>
+    <div>
+      <strong>版本记录：</strong>本SOP版本 v2.0，2026年4月制定。每季度复审一次，由运营负责人确认是否需要更新。<br>
+      <strong>本版更新要点：</strong>① 选品改为七维综合评估，展示原始数据 ② 第二章更名为「商品上架与社媒推广」③ 新增独立站AI诊断章节 ④ ROI定价公式量化（保证≥120%）⑤ 社媒内容创作公式细化 ⑥ 邮件主题行类型和大促力度全面升级
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>ZNXP SaaS 运营 SOP v2.0 — 附录</span>
+    <span>© 2026 ZNXP SaaS · 机密文件，请勿外传</span>
+  </div>
+</div>
+
+</body>
+</html>

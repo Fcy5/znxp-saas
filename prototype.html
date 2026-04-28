@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZNXP SaaS — 产品原型</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f1117;--sidebar:#111827;--sidebar-border:#1f2937;
+  --card:#161b27;--card-border:#1e2535;--text:#e2e8f0;--muted:#64748b;
+  --blue:#3b82f6;--violet:#8b5cf6;--emerald:#10b981;--amber:#f59e0b;
+  --pink:#ec4899;--red:#ef4444;--rose:#f43f5e;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:13px}
+
+/* Sidebar */
+.sidebar{width:232px;height:100vh;background:var(--sidebar);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;flex-shrink:0}
+.logo{height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--sidebar-border)}
+.logo-icon{width:30px;height:30px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.logo-text{font-weight:700;font-size:15px}.logo-sub{font-size:11px;color:var(--muted);margin-left:4px}
+nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:0 10px;margin:8px 0 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;cursor:pointer;transition:.15s;color:var(--muted);user-select:none}
+.nav-item:hover{background:#1f2937;color:var(--text)}
+.nav-item.active{background:rgba(59,130,246,.12);color:var(--blue)}
+.nav-item .icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.nav-item .label{flex:1;font-size:12.5px}
+.badge{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;background:rgba(245,158,11,.15);color:#f59e0b}
+.badge.new{background:rgba(139,92,246,.15);color:var(--violet)}
+.badge.num{background:rgba(239,68,68,.2);color:#f87171}
+.nav-divider{border-top:1px solid var(--sidebar-border);margin:8px 0}
+.datasrc{display:flex;align-items:center;gap:8px;padding:5px 10px;color:var(--muted);font-size:11px}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot.live{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.user-area{padding:10px;border-top:1px solid var(--sidebar-border)}
+.user-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{height:56px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.header-title{font-size:15px;font-weight:600;flex:1}
+.search{background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:12px;width:220px;outline:none}
+.content{flex:1;overflow-y:auto;padding:20px}
+
+/* Cards & Grid */
+.page{display:none}.page.active{display:block}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:16px}
+.card-sm{background:var(--card);border:1px solid var(--card-border);border-radius:10px;padding:12px}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.stat-val{font-size:24px;font-weight:700;margin:6px 0 2px}
+.stat-sub{font-size:11px;color:var(--muted)}
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
+.tag.blue{background:rgba(59,130,246,.15);color:#60a5fa}
+.tag.amber{background:rgba(245,158,11,.15);color:#fbbf24}
+.tag.emerald{background:rgba(16,185,129,.15);color:#34d399}
+.tag.violet{background:rgba(139,92,246,.15);color:#a78bfa}
+.tag.red{background:rgba(239,68,68,.15);color:#f87171}
+.tag.pink{background:rgba(236,72,153,.15);color:#f472b6}
+.tag.gray{background:#1f2937;color:var(--muted)}
+
+/* Product card */
+.prod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.prod-card{background:var(--card);border:1px solid var(--card-border);border-radius:12px;overflow:hidden;cursor:pointer;transition:.2s}
+.prod-card:hover{border-color:#374151;transform:translateY(-1px)}
+.prod-img{height:160px;background:linear-gradient(135deg,#1e2535,#252d40);display:flex;align-items:center;justify-content:center;font-size:40px;position:relative}
+.prod-img .score{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);padding:2px 7px;border-radius:6px;font-size:11px;color:#fbbf24;font-weight:700}
+.prod-body{padding:10px}
+.prod-title{font-size:12px;font-weight:500;line-height:1.4;margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.prod-price{font-size:15px;font-weight:700;color:var(--text)}
+.prod-meta{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+
+/* Table */
+.table{width:100%;border-collapse:collapse}
+.table th{text-align:left;font-size:11px;color:var(--muted);font-weight:500;padding:8px 12px;border-bottom:1px solid var(--card-border)}
+.table td{padding:10px 12px;border-bottom:1px solid var(--card-border);font-size:12px}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:rgba(255,255,255,.02)}
+
+/* Filters */
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:5px 12px;border-radius:7px;background:var(--card);border:1px solid var(--card-border);color:var(--muted);font-size:12px;cursor:pointer;transition:.15s}
+.filter-btn:hover,.filter-btn.active{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:var(--blue)}
+.select{background:var(--card);border:1px solid var(--card-border);border-radius:7px;padding:5px 10px;color:var(--text);font-size:12px;outline:none;cursor:pointer}
+
+/* Buttons */
+.btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:.15s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-outline{background:transparent;border:1px solid var(--card-border);color:var(--text)}.btn-outline:hover{border-color:#374151;background:#1f2937}
+.btn-danger{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;background:#111827;border-radius:10px;padding:3px;margin-bottom:16px;width:fit-content}
+.tab{padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--muted);transition:.15s}
+.tab.active{background:var(--card);color:var(--text);font-weight:500}
+
+/* Agent cards */
+.agent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.agent-card{background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:16px;cursor:pointer;transition:.2s}
+.agent-card:hover{border-color:#374151;transform:translateY(-1px)}
+.agent-icon{font-size:28px;margin-bottom:10px}
+.agent-title{font-weight:600;margin-bottom:4px}
+.agent-desc{font-size:11px;color:var(--muted);line-height:1.5}
+.agent-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+
+/* Progress bar */
+.progress{height:5px;background:#1f2937;border-radius:3px;overflow:hidden}
+.progress-bar{height:100%;border-radius:3px;transition:.3s}
+
+/* Status badges */
+.status{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:5px}
+.status.ok{background:rgba(16,185,129,.1);color:#34d399}
+.status.warn{background:rgba(245,158,11,.1);color:#fbbf24}
+.status.err{background:rgba(239,68,68,.1);color:#f87171}
+.status.gray{background:#1f2937;color:var(--muted)}
+
+/* Chart placeholder */
+.chart{height:160px;background:linear-gradient(180deg,rgba(59,130,246,.08) 0%,transparent 100%);border-radius:8px;display:flex;align-items:flex-end;gap:3px;padding:10px;position:relative;overflow:hidden}
+.chart::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(255,255,255,.02) 30px,rgba(255,255,255,.02) 31px)}
+.bar{flex:1;border-radius:4px 4px 0 0;background:rgba(59,130,246,.4);min-height:10px}
+.area-line{position:absolute;bottom:10px;left:10px;right:10px;height:80px;background:linear-gradient(180deg,rgba(59,130,246,.3),transparent);border-top:2px solid rgba(59,130,246,.7);border-radius:4px}
+
+/* List item */
+.list-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--card-border)}
+.list-item:last-child{border-bottom:none}
+.list-thumb{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#1e2535,#252d40);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.list-body{flex:1;min-width:0}
+.list-title{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-sub{font-size:11px;color:var(--muted)}
+
+/* Shopify AI */
+.shopify-grid{display:grid;grid-template-columns:280px 1fr;gap:16px}
+.product-list-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:.15s}
+.product-list-item:hover,.product-list-item.active{background:#1f2937}
+.pli-img{width:40px;height:40px;border-radius:6px;background:#1e2535;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+
+/* Settings */
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--card-border)}
+.settings-row:last-child{border-bottom:none}
+.toggle{width:36px;height:20px;background:#374151;border-radius:10px;cursor:pointer;position:relative;transition:.3s}
+.toggle.on{background:var(--blue)}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.3s}
+.toggle.on::after{left:19px}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#374151;border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div><span class="logo-text">ZNXP</span><span class="logo-sub">SaaS</span></div>
+  </div>
+  <nav>
+    <div class="nav-label">主菜单</div>
+    <div class="nav-item active" onclick="show('dashboard',this)"><span class="icon">📊</span><span class="label">Dashboard</span></div>
+    <div class="nav-item" onclick="show('products',this)"><span class="icon">🛍️</span><span class="label">选品大厅</span><span class="badge">HOT</span></div>
+    <div class="nav-item" onclick="show('library',this)"><span class="icon">🔖</span><span class="label">我的选品库</span></div>
+    <div class="nav-item" onclick="show('published',this)"><span class="icon">🚀</span><span class="label">上架历史</span></div>
+    <div class="nav-item" onclick="show('agent',this)"><span class="icon">🤖</span><span class="label">AI Agent</span><span class="badge num">6</span></div>
+    <div class="nav-item" onclick="show('shopifyai',this)"><span class="icon">✨</span><span class="label">Shopify AI 优化</span><span class="badge new">NEW</span></div>
+    <div class="nav-item" onclick="show('gmc',this)"><span class="icon">🛒</span><span class="label">Google 购物广告</span></div>
+    <div class="nav-item" onclick="show('facebook',this)"><span class="icon">📺</span><span class="label">FB 广告库</span></div>
+    <div class="nav-item" onclick="show('xhs',this)"><span class="icon">🌸</span><span class="label">小红书选品</span><span class="badge new">NEW</span></div>
+    <div class="nav-item" onclick="show('suppliers',this)"><span class="icon">🚛</span><span class="label">供应商</span></div>
+    <div class="nav-item" onclick="show('shops',this)"><span class="icon">🏪</span><span class="label">我的店铺</span></div>
+    <div class="nav-item" onclick="show('settings',this)"><span class="icon">⚙️</span><span class="label">设置</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-label">数据源</div>
+    <div class="datasrc"><div class="dot live" style="background:#f59e0b"></div>Amazon BSR<span style="margin-left:auto;font-size:10px;color:#34d399">LIVE</span></div>
+    <div class="datasrc"><div class="dot live" style="background:#ec4899"></div>Etsy Trends<span style="margin-left:auto;font-size:10px;color:#34d399">LIVE</span></div>
+    <div class="datasrc"><div class="dot" style="background:#ef4444"></div>TikTok 热榜</div>
+    <div class="datasrc"><div class="dot" style="background:#3b82f6"></div>Facebook Ads</div>
+    <div class="datasrc"><div class="dot live" style="background:#10b981"></div>Google Merchant<span style="margin-left:auto;font-size:10px;color:#34d399">LIVE</span></div>
+    <div class="datasrc"><div class="dot" style="background:#f43f5e"></div>小红书</div>
+  </nav>
+  <div class="user-area">
+    <div class="user-row">
+      <div class="avatar">U</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">fcy5</div><div style="font-size:11px;color:var(--muted)">Pro Plan</div></div>
+      <span style="color:var(--muted);cursor:pointer;font-size:13px">⇥</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="header">
+    <div class="header-title" id="page-title">Dashboard</div>
+    <input class="search" placeholder="🔍  搜索商品、店铺、订单...">
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--card);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px">🌙</div>
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--card);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px">🔔</div>
+    </div>
+  </div>
+  <div class="content">
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div id="page-dashboard" class="page active">
+    <div class="grid-4">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">🔥</span><span style="font-size:12px;color:var(--muted)">平台商品总量</span></div>
+        <div class="stat-val" style="color:#fbbf24">10,525</div>
+        <div class="stat-sub">全平台真实数据</div>
+        <div class="progress" style="margin-top:10px"><div class="progress-bar" style="width:72%;background:#f59e0b"></div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">📦</span><span style="font-size:12px;color:var(--muted)">我的商品库</span></div>
+        <div class="stat-val" style="color:#60a5fa">284</div>
+        <div class="stat-sub">已加入选品库</div>
+        <div class="progress" style="margin-top:10px"><div class="progress-bar" style="width:28%;background:#3b82f6"></div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">🚀</span><span style="font-size:12px;color:var(--muted)">今日已上架</span></div>
+        <div class="stat-val" style="color:#34d399">12</div>
+        <div class="stat-sub">Shopify 已发布</div>
+        <div class="progress" style="margin-top:10px"><div class="progress-bar" style="width:40%;background:#10b981"></div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">🤖</span><span style="font-size:12px;color:var(--muted)">累计上架</span></div>
+        <div class="stat-val" style="color:#a78bfa">570</div>
+        <div class="stat-sub">历史总上架量</div>
+        <div class="progress" style="margin-top:10px"><div class="progress-bar" style="width:57%;background:#8b5cf6"></div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📈 平台数据趋势（近7天）</div>
+        <div class="chart">
+          <div class="area-line"></div>
+          <div class="bar" style="height:45%"></div><div class="bar" style="height:60%"></div><div class="bar" style="height:40%"></div>
+          <div class="bar" style="height:75%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:90%"></div><div class="bar" style="height:70%"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <span style="font-size:11px;color:#60a5fa">● 商品数量</span>
+          <span style="font-size:11px;color:#34d399">● 上架数量</span>
+          <span style="font-size:11px;color:#a78bfa">● AI 生成</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🥇 AI 推荐爆款 TOP 10</div>
+        <div class="list-item"><div class="list-thumb">👘</div><div class="list-body"><div class="list-title">Embroidered Couple Matching Hoodie</div><div class="list-sub"><span class="tag amber">etsy</span> <span style="color:#fbbf24">AI:92</span></div></div><div style="font-size:13px;font-weight:700">$38.99</div></div>
+        <div class="list-item"><div class="list-thumb">🧵</div><div class="list-body"><div class="list-title">Custom Name Embroidery Sweatshirt</div><div class="list-sub"><span class="tag blue">amazon</span> <span style="color:#fbbf24">AI:88</span></div></div><div style="font-size:13px;font-weight:700">$29.99</div></div>
+        <div class="list-item"><div class="list-thumb">🎀</div><div class="list-body"><div class="list-title">Anniversary Gift Set Embroidered</div><div class="list-sub"><span class="tag red">tiktok</span> <span style="color:#fbbf24">AI:85</span></div></div><div style="font-size:13px;font-weight:700">$45.00</div></div>
+        <div class="list-item"><div class="list-thumb">🏆</div><div class="list-body"><div class="list-title">Pet Portrait Custom Embroidery</div><div class="list-sub"><span class="tag amber">etsy</span> <span style="color:#fbbf24">AI:82</span></div></div><div style="font-size:13px;font-weight:700">$52.00</div></div>
+        <div class="list-item"><div class="list-thumb">🌸</div><div class="list-body"><div class="list-title">Floral Wedding Embroidery Patch</div><div class="list-sub"><span class="tag pink">小红书</span> <span style="color:#ec4899">❤ 12.3k</span></div></div><div style="font-size:13px;font-weight:700;color:#f472b6">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PRODUCTS ══════════ -->
+  <div id="page-products" class="page">
+    <div class="filters">
+      <select class="select"><option>全部平台</option><option>Amazon</option><option>Etsy</option><option>TikTok</option><option>Facebook</option></select>
+      <select class="select"><option>全部品类</option><option>Embroidery</option><option>Hoodie</option><option>Accessories</option></select>
+      <select class="select"><option>排序: AI 评分</option><option>销量增速</option><option>TikTok 热度</option><option>利润率</option><option>最新</option></select>
+      <div class="filter-btn active">全部</div>
+      <div class="filter-btn">🔥 热门</div>
+      <div class="filter-btn">💰 高利润</div>
+      <div class="filter-btn">📈 增速快</div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <input class="search" style="width:200px" placeholder="搜索商品...">
+      </div>
+    </div>
+    <div class="prod-grid">
+      <div class="prod-card"><div class="prod-img">👘<div class="score">AI 92</div></div><div class="prod-body"><div class="prod-title">Embroidered Couple Matching Hoodie Set Custom Name</div><div class="prod-price">$38.99</div><div class="prod-meta"><span class="tag amber">etsy</span><span class="tag emerald">+42%</span><span class="tag violet">TikTok 热</span></div></div></div>
+      <div class="prod-card"><div class="prod-img">🧵<div class="score">AI 88</div></div><div class="prod-body"><div class="prod-title">Custom Name Embroidery Sweatshirt Personalized Gift</div><div class="prod-price">$29.99</div><div class="prod-meta"><span class="tag blue">amazon</span><span class="tag emerald">+28%</span></div></div></div>
+      <div class="prod-card"><div class="prod-img">🎀<div class="score">AI 85</div></div><div class="prod-body"><div class="prod-title">Anniversary Gift Embroidered Set Couple Photo</div><div class="prod-price">$45.00</div><div class="prod-meta"><span class="tag red">tiktok</span><span class="tag amber">高利润</span></div></div></div>
+      <div class="prod-card"><div class="prod-img">🐕<div class="score">AI 82</div></div><div class="prod-body"><div class="prod-title">Pet Portrait Custom Embroidery Pillow Case</div><div class="prod-price">$52.00</div><div class="prod-meta"><span class="tag amber">etsy</span><span class="tag violet">新品</span></div></div></div>
+      <div class="prod-card"><div class="prod-img">👒<div class="score">AI 79</div></div><div class="prod-body"><div class="prod-title">Floral Embroidery Hat Custom Monogram Cap</div><div class="prod-price">$24.99</div><div class="prod-meta"><span class="tag blue">amazon</span><span class="tag emerald">+19%</span></div></div></div>
+      <div class="prod-card"><div class="prod-img">🎄<div class="score">AI 76</div></div><div class="prod-body"><div class="prod-title">Christmas Stocking Embroidered Family Names</div><div class="prod-price">$18.00</div><div class="prod-meta"><span class="tag amber">etsy</span><span class="tag red">季节热</span></div></div></div>
+      <div class="prod-card"><div class="prod-img">👜<div class="score">AI 74</div></div><div class="prod-body"><div class="prod-title">Embroidered Tote Bag Personalized Canvas Bag</div><div class="prod-price">$22.50</div><div class="prod-meta"><span class="tag blue">amazon</span><span class="tag amber">高利润</span></div></div></div>
+      <div class="prod-card"><div class="prod-img">🧸<div class="score">AI 71</div></div><div class="prod-body"><div class="prod-title">Baby Name Embroidery Blanket Keepsake Gift</div><div class="prod-price">$34.00</div><div class="prod-meta"><span class="tag amber">etsy</span><span class="tag emerald">+15%</span></div></div></div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:4px;margin-top:16px">
+      <div class="filter-btn active">1</div><div class="filter-btn">2</div><div class="filter-btn">3</div><div style="padding:5px 8px;color:var(--muted)">...</div><div class="filter-btn">48</div>
+    </div>
+  </div>
+
+  <!-- ══════════ LIBRARY ══════════ -->
+  <div id="page-library" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <h2 style="font-size:16px;font-weight:600">我的选品库</h2>
+        <p style="font-size:12px;color:var(--muted);margin-top:2px">已收藏 284 个商品</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input class="search" placeholder="搜索选品库..." style="width:200px">
+        <select class="select"><option>全部品类</option><option>Hoodie</option><option>Accessories</option></select>
+      </div>
+    </div>
+    <div class="prod-grid">
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#1e2535,#2d1b4e)">👘<div class="score">AI 92</div></div><div class="prod-body"><div class="prod-title">Embroidered Couple Matching Hoodie</div><div class="prod-price">$38.99</div><div class="prod-meta"><span class="tag amber">etsy</span><span class="tag emerald">已加入</span></div></div></div>
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#1e2535,#1b2d2d)">🧵<div class="score">AI 88</div></div><div class="prod-body"><div class="prod-title">Custom Name Embroidery Sweatshirt</div><div class="prod-price">$29.99</div><div class="prod-meta"><span class="tag blue">amazon</span><span class="status ok" style="font-size:10px">已上架</span></div></div></div>
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#2d1b1b,#1e2535)">🎀<div class="score">AI 85</div></div><div class="prod-body"><div class="prod-title">Anniversary Gift Embroidered Set</div><div class="prod-price">$45.00</div><div class="prod-meta"><span class="tag red">tiktok</span><span class="tag amber">待上架</span></div></div></div>
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#1b2d1b,#1e2535)">🐕<div class="score">AI 82</div></div><div class="prod-body"><div class="prod-title">Pet Portrait Custom Embroidery</div><div class="prod-price">$52.00</div><div class="prod-meta"><span class="tag amber">etsy</span></div></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PUBLISHED ══════════ -->
+  <div id="page-published" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><h2 style="font-size:16px;font-weight:600">上架历史</h2><p style="font-size:12px;color:var(--muted);margin-top:2px">累计上架 570 件</p></div>
+      <div style="display:flex;gap:8px">
+        <select class="select"><option>全部店铺</option><option>mystichot.myshopify.com</option><option>tiuous.myshopify.com</option></select>
+        <select class="select"><option>全部状态</option><option>已上架</option><option>失败</option><option>处理中</option></select>
+      </div>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="table">
+        <thead><tr><th>商品</th><th>店铺</th><th>价格</th><th>上架时间</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td><div class="list-item" style="padding:0;border:none"><div class="list-thumb">👘</div><div class="list-body"><div class="list-title">Embroidered Couple Matching Hoodie</div></div></div></td><td style="color:var(--muted);font-size:11px">mystichot</td><td style="font-weight:600">$38.99</td><td style="color:var(--muted);font-size:11px">2026-04-21 14:32</td><td><span class="status ok">✓ 已上架</span></td><td><span class="btn btn-outline btn-sm">查看</span></td></tr>
+          <tr><td><div class="list-item" style="padding:0;border:none"><div class="list-thumb">🧵</div><div class="list-body"><div class="list-title">Custom Name Embroidery Sweatshirt</div></div></div></td><td style="color:var(--muted);font-size:11px">tiuous</td><td style="font-weight:600">$29.99</td><td style="color:var(--muted);font-size:11px">2026-04-21 10:15</td><td><span class="status ok">✓ 已上架</span></td><td><span class="btn btn-outline btn-sm">查看</span></td></tr>
+          <tr><td><div class="list-item" style="padding:0;border:none"><div class="list-thumb">🎀</div><div class="list-body"><div class="list-title">Anniversary Gift Embroidered Set</div></div></div></td><td style="color:var(--muted);font-size:11px">mystichot</td><td style="font-weight:600">$45.00</td><td style="color:var(--muted);font-size:11px">2026-04-20 18:44</td><td><span class="status err">✗ 失败</span></td><td><span class="btn btn-outline btn-sm">重试</span></td></tr>
+          <tr><td><div class="list-item" style="padding:0;border:none"><div class="list-thumb">🐕</div><div class="list-body"><div class="list-title">Pet Portrait Custom Embroidery</div></div></div></td><td style="color:var(--muted);font-size:11px">tiuous</td><td style="font-weight:600">$52.00</td><td style="color:var(--muted);font-size:11px">2026-04-20 09:11</td><td><span class="status warn">⟳ 处理中</span></td><td><span class="btn btn-outline btn-sm">查看</span></td></tr>
+          <tr><td><div class="list-item" style="padding:0;border:none"><div class="list-thumb">👒</div><div class="list-body"><div class="list-title">Floral Embroidery Hat Custom</div></div></div></td><td style="color:var(--muted);font-size:11px">mystichot</td><td style="font-weight:600">$24.99</td><td style="color:var(--muted);font-size:11px">2026-04-19 20:03</td><td><span class="status gray">▽ 已下架</span></td><td><span class="btn btn-outline btn-sm">重新上架</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ AGENT ══════════ -->
+  <div id="page-agent" class="page">
+    <div style="margin-bottom:16px">
+      <h2 style="font-size:16px;font-weight:600">AI Agent 工作台</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:2px">选择一个 Agent 开始工作</p>
+    </div>
+    <div class="agent-grid">
+      <div class="agent-card" style="border-color:rgba(59,130,246,.2)">
+        <div class="agent-icon">🏥</div>
+        <div class="agent-title">店铺智能诊脉</div>
+        <div class="agent-desc">分析店铺整体健康状况，识别问题商品，给出优化建议和行动计划</div>
+        <div class="agent-footer"><span class="tag blue">Gemini Pro</span><span class="btn btn-primary btn-sm">开始诊断</span></div>
+      </div>
+      <div class="agent-card" style="border-color:rgba(139,92,246,.2)">
+        <div class="agent-icon">🎯</div>
+        <div class="agent-title">零提示词自动推品</div>
+        <div class="agent-desc">AI 自动分析选品库，根据店铺风格智能推荐最适合上架的商品</div>
+        <div class="agent-footer"><span class="tag violet">Gemini Flash</span><span class="btn btn-primary btn-sm">立即推荐</span></div>
+      </div>
+      <div class="agent-card" style="border-color:rgba(16,185,129,.2)">
+        <div class="agent-icon">✍️</div>
+        <div class="agent-title">SEO & GEO 双擎文案</div>
+        <div class="agent-desc">为商品生成 SEO 优化标题、Meta 描述、HTML 详情，提升搜索排名</div>
+        <div class="agent-footer"><span class="tag emerald">GPT-4o</span><span class="btn btn-primary btn-sm">生成文案</span></div>
+      </div>
+      <div class="agent-card" style="border-color:rgba(245,158,11,.2)">
+        <div class="agent-icon">🎨</div>
+        <div class="agent-title">图片深度处理</div>
+        <div class="agent-desc">AI 图片生成与编辑：白底产品图、场景图、模特展示图，支持图生图</div>
+        <div class="agent-footer">
+          <div style="display:flex;gap:4px"><span class="tag amber">GPT-Image 2</span></div>
+          <span class="btn btn-primary btn-sm">生成图片</span>
+        </div>
+        <div style="margin-top:10px;padding:10px;background:#0f1117;border-radius:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">
+          <select class="select" style="grid-column:1/-1;font-size:11px"><option>GPT-Image 2 (推荐)</option><option>GPT-Image 1.5</option><option>Gemini Flash Image</option></select>
+          <select class="select" style="font-size:10px"><option>自动尺寸</option><option>1:1</option><option>16:9</option><option>9:16</option></select>
+          <select class="select" style="font-size:10px"><option>低质量(省Token)</option><option>中质量</option><option>高质量</option></select>
+          <div style="grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap">
+            <span class="filter-btn active" style="font-size:10px;padding:3px 8px">白底产品图</span>
+            <span class="filter-btn" style="font-size:10px;padding:3px 8px">欧美生活场景</span>
+            <span class="filter-btn" style="font-size:10px;padding:3px 8px">模特展示</span>
+          </div>
+          <div style="grid-column:1/-1;display:flex;gap:6px">
+            <span class="tag blue" style="cursor:pointer;padding:3px 8px">🖼️ 图生图</span>
+            <span style="font-size:11px;color:var(--muted);line-height:1.8">给AI提供原图参考</span>
+          </div>
+        </div>
+      </div>
+      <div class="agent-card" style="border-color:rgba(236,72,153,.2)">
+        <div class="agent-icon">🎬</div>
+        <div class="agent-title">AI 视频生成</div>
+        <div class="agent-desc">基于商品图生成产品展示视频，适用于 TikTok、Instagram Reels</div>
+        <div class="agent-footer">
+          <div style="display:flex;gap:4px"><span class="tag pink">Seedance 2.0</span></div>
+          <span class="btn btn-primary btn-sm">生成视频</span>
+        </div>
+      </div>
+      <div class="agent-card" style="border-color:rgba(16,185,129,.2)">
+        <div class="agent-icon">📱</div>
+        <div class="agent-title">社媒文案生成</div>
+        <div class="agent-desc">一键生成 TikTok、Facebook、Instagram 三平台营销文案</div>
+        <div class="agent-footer"><span class="tag emerald">Gemini Flash</span><span class="btn btn-primary btn-sm">生成文案</span></div>
+      </div>
+    </div>
+    <div style="margin-top:16px" class="card">
+      <div class="card-title">📋 诊脉历史记录</div>
+      <table class="table">
+        <thead><tr><th>店铺</th><th>时间</th><th>健康分</th><th>关键发现</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>mystichot</td><td style="color:var(--muted);font-size:11px">2026-04-27 10:32</td><td><span style="color:#34d399;font-weight:700">82 / 100</span></td><td style="color:var(--muted);font-size:11px">3 个低分商品需优化</td><td><span class="btn btn-outline btn-sm">查看报告</span></td></tr>
+          <tr><td>tiuous</td><td style="color:var(--muted);font-size:11px">2026-04-25 08:15</td><td><span style="color:#fbbf24;font-weight:700">67 / 100</span></td><td style="color:var(--muted);font-size:11px">缺少 SEO 优化</td><td><span class="btn btn-outline btn-sm">查看报告</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ SHOPIFY AI ══════════ -->
+  <div id="page-shopifyai" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><h2 style="font-size:16px;font-weight:600">Shopify AI 优化</h2><p style="font-size:12px;color:var(--muted);margin-top:2px">同步管理 Shopify 店铺商品</p></div>
+      <div style="display:flex;gap:8px">
+        <select class="select"><option>mystichot.myshopify.com</option><option>tiuous.myshopify.com</option></select>
+        <span class="btn btn-primary">🔄 同步商品</span>
+      </div>
+    </div>
+    <div class="shopify-grid">
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--card-border);display:flex;gap:6px">
+          <input class="search" style="flex:1" placeholder="搜索商品...">
+          <select class="select" style="font-size:11px"><option>全部</option><option>上架</option><option>下架</option></select>
+        </div>
+        <div style="overflow-y:auto;max-height:520px">
+          <div class="product-list-item active"><div class="pli-img">👘</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Embroidered Couple Hoodie</div><div style="font-size:11px;color:var(--muted)">$38.99 · <span style="color:#34d399">上架</span></div></div></div>
+          <div class="product-list-item"><div class="pli-img">🧵</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Custom Name Sweatshirt</div><div style="font-size:11px;color:var(--muted)">$29.99 · <span style="color:#34d399">上架</span></div></div></div>
+          <div class="product-list-item"><div class="pli-img">🎀</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Anniversary Gift Set</div><div style="font-size:11px;color:var(--muted)">$45.00 · <span style="color:var(--muted)">下架</span></div></div></div>
+          <div class="product-list-item"><div class="pli-img">🐕</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Pet Portrait Embroidery</div><div style="font-size:11px;color:var(--muted)">$52.00 · <span style="color:#34d399">上架</span></div></div></div>
+          <div class="product-list-item"><div class="pli-img">👒</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Floral Embroidery Hat</div><div style="font-size:11px;color:var(--muted)">$24.99 · <span style="color:#34d399">上架</span></div></div></div>
+        </div>
+      </div>
+      <div style="space-y:12px;display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-title">✨ SEO 优化</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Embroidered Couple Matching Hoodie Set</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">新 SEO 标题</div><div style="font-size:12px;padding:6px 10px;background:#0f1117;border-radius:6px">Personalized Embroidered Matching Couple Hoodie</div></div>
+            <div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">优化状态</div><div><span class="status ok">✓ 已优化</span></div></div>
+          </div>
+          <div style="display:flex;gap:6px"><span class="btn btn-primary btn-sm">🤖 AI 生成</span><span class="btn btn-outline btn-sm">📋 应用</span><span class="btn btn-outline btn-sm">↗ 推送 Shopify</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">💰 批量改价</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="select"><option>涨价</option><option>降价</option><option>固定价格</option></select>
+            <input class="search" style="width:80px" placeholder="10%">
+            <span class="btn btn-primary btn-sm">批量应用</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🖼️ AI 视频生成</div>
+          <div style="display:flex;gap:8px">
+            <select class="select" style="flex:1"><option>Seedance 2.0 (推荐)</option><option>万象 2.7</option></select>
+            <span class="btn btn-primary btn-sm">生成视频</span>
+          </div>
+          <div style="margin-top:10px;padding:8px;background:#0f1117;border-radius:8px;font-size:11px;color:var(--muted)">上次生成：Couple Hoodie 展示视频 · 2026-04-22</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ GMC ══════════ -->
+  <div id="page-gmc" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><h2 style="font-size:16px;font-weight:600">Google 购物广告</h2></div>
+      <span class="btn btn-primary">+ 新建广告系列</span>
+    </div>
+    <div class="tabs">
+      <div class="tab active">🏪 商品管理</div>
+      <div class="tab">📢 广告系列</div>
+    </div>
+    <div class="grid-4" style="margin-bottom:16px">
+      <div class="card-sm"><div style="color:var(--muted);font-size:11px">已推送商品</div><div style="font-size:20px;font-weight:700;margin-top:4px">142</div></div>
+      <div class="card-sm"><div style="color:var(--muted);font-size:11px">已批准</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#34d399">128</div></div>
+      <div class="card-sm"><div style="color:var(--muted);font-size:11px">审核中</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#fbbf24">10</div></div>
+      <div class="card-sm"><div style="color:var(--muted);font-size:11px">已拒绝</div><div style="font-size:20px;font-weight:700;margin-top:4px;color:#f87171">4</div></div>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="table">
+        <thead><tr><th>商品</th><th>价格</th><th>GMC 状态</th><th>广告投放</th><th>点击</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td><div style="font-size:12px;font-weight:500">Embroidered Couple Hoodie</div></td><td>$38.99</td><td><span class="status ok">✓ 已批准</span></td><td><span class="status ok">投放中</span></td><td style="color:var(--muted)">1,234</td><td><span class="btn btn-outline btn-sm">详情</span></td></tr>
+          <tr><td><div style="font-size:12px;font-weight:500">Custom Name Sweatshirt</div></td><td>$29.99</td><td><span class="status warn">⟳ 审核中</span></td><td><span class="status gray">—</span></td><td style="color:var(--muted)">—</td><td><span class="btn btn-outline btn-sm">详情</span></td></tr>
+          <tr><td><div style="font-size:12px;font-weight:500">Anniversary Gift Set</div></td><td>$45.00</td><td><span class="status err">✗ 已拒绝</span></td><td><span class="status gray">—</span></td><td style="color:var(--muted)">—</td><td><span class="btn btn-danger btn-sm">查看原因</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ FACEBOOK ══════════ -->
+  <div id="page-facebook" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><h2 style="font-size:16px;font-weight:600">FB 广告库</h2><p style="font-size:12px;color:var(--muted);margin-top:2px">共 192 条广告素材</p></div>
+      <div style="display:flex;gap:8px">
+        <input class="search" placeholder="搜索关键词爬取...">
+        <select class="select"><option>每天 6 点</option><option>每天 12 点</option><option>每 6 小时</option></select>
+        <span class="btn btn-primary">🕷 立即爬取</span>
+      </div>
+    </div>
+    <div class="grid-3" style="grid-template-columns:repeat(3,1fr)">
+      <div class="card-sm" style="cursor:pointer">
+        <div style="height:140px;background:linear-gradient(135deg,#1e2535,#2d1b4e);border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:48px">👘</div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">Couple Matching Embroidery Hoodie</div>
+        <div style="display:flex;gap:6px"><span class="tag blue">fb ads</span><span style="font-size:11px;color:var(--muted)">2026-04-21</span></div>
+      </div>
+      <div class="card-sm" style="cursor:pointer">
+        <div style="height:140px;background:linear-gradient(135deg,#1e2535,#1b2d1b);border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:48px">🧵</div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">Personalized Name Sweatshirt Gift</div>
+        <div style="display:flex;gap:6px"><span class="tag blue">fb ads</span><span style="font-size:11px;color:var(--muted)">2026-04-20</span></div>
+      </div>
+      <div class="card-sm" style="cursor:pointer">
+        <div style="height:140px;background:linear-gradient(135deg,#2d1b1b,#1e2535);border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:48px">🎀</div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">Anniversary Love Gift Embroidered</div>
+        <div style="display:flex;gap:6px"><span class="tag blue">fb ads</span><span style="font-size:11px;color:var(--muted)">2026-04-19</span></div>
+      </div>
+      <div class="card-sm" style="cursor:pointer">
+        <div style="height:140px;background:linear-gradient(135deg,#1b2d2d,#1e2535);border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:48px">🐕</div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">Pet Photo Custom Embroidery Art</div>
+        <div style="display:flex;gap:6px"><span class="tag blue">fb ads</span><span style="font-size:11px;color:var(--muted)">2026-04-18</span></div>
+      </div>
+      <div class="card-sm" style="cursor:pointer">
+        <div style="height:140px;background:linear-gradient(135deg,#2d2d1b,#1e2535);border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:48px">👒</div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">Floral Monogram Embroidery Hat</div>
+        <div style="display:flex;gap:6px"><span class="tag blue">fb ads</span><span style="font-size:11px;color:var(--muted)">2026-04-17</span></div>
+      </div>
+      <div class="card-sm" style="cursor:pointer">
+        <div style="height:140px;background:linear-gradient(135deg,#1e2535,#2d1b2d);border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:48px">🌸</div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">Wedding Flower Embroidery Patch</div>
+        <div style="display:flex;gap:6px"><span class="tag blue">fb ads</span><span style="font-size:11px;color:var(--muted)">2026-04-16</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ XHS ══════════ -->
+  <div id="page-xhs" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><h2 style="font-size:16px;font-weight:600">小红书选品</h2><p style="font-size:12px;color:var(--muted);margin-top:2px">发现小红书热门刺绣选题</p></div>
+      <span class="btn btn-primary" style="background:#f43f5e">🌸 同步小红书</span>
+    </div>
+    <div class="prod-grid">
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#3b0f1f,#1e2535)">🌸<div class="score" style="color:#f472b6">❤ 23k</div></div><div class="prod-body"><div class="prod-title">DIY 刺绣包 秋冬手工包</div><div class="prod-price" style="color:#f472b6">❤ 23,412</div><div class="prod-meta"><span class="tag pink">小红书</span></div></div></div>
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#3b0f1f,#2d1b4e)">🎀<div class="score" style="color:#f472b6">❤ 18k</div></div><div class="prod-body"><div class="prod-title">情侣刺绣卫衣 定制款</div><div class="prod-price" style="color:#f472b6">❤ 18,267</div><div class="prod-meta"><span class="tag pink">小红书</span></div></div></div>
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#2d1b1b,#3b0f1f)">🐱<div class="score" style="color:#f472b6">❤ 15k</div></div><div class="prod-body"><div class="prod-title">猫咪宠物刺绣画框</div><div class="prod-price" style="color:#f472b6">❤ 15,099</div><div class="prod-meta"><span class="tag pink">小红书</span></div></div></div>
+      <div class="prod-card"><div class="prod-img" style="background:linear-gradient(135deg,#1b2d1b,#3b0f1f)">🌼<div class="score" style="color:#f472b6">❤ 12k</div></div><div class="prod-body"><div class="prod-title">花朵刺绣帽子 田园风</div><div class="prod-price" style="color:#f472b6">❤ 12,544</div><div class="prod-meta"><span class="tag pink">小红书</span></div></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ SUPPLIERS ══════════ -->
+  <div id="page-suppliers" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><h2 style="font-size:16px;font-weight:600">供应商管理</h2></div>
+      <span class="btn btn-primary">+ 新增供应商</span>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="table">
+        <thead><tr><th>供应商名称</th><th>联系方式</th><th>品类</th><th>价格区间</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:500">义乌刺绣厂 A</td><td style="color:var(--muted);font-size:11px">wx: yiwu_emb</td><td><span class="tag violet">刺绣</span></td><td>$8 – $25</td><td><span class="status ok">上架</span></td><td><span class="btn btn-outline btn-sm">编辑</span></td></tr>
+          <tr><td style="font-weight:500">广州服装批发 B</td><td style="color:var(--muted);font-size:11px">wx: gz_cloth</td><td><span class="tag blue">卫衣</span></td><td>$15 – $40</td><td><span class="status ok">上架</span></td><td><span class="btn btn-outline btn-sm">编辑</span></td></tr>
+          <tr><td style="font-weight:500">东莞礼品定制 C</td><td style="color:var(--muted);font-size:11px">wx: dg_gift</td><td><span class="tag amber">礼品</span></td><td>$5 – $20</td><td><span class="status warn">待审核</span></td><td><span class="btn btn-outline btn-sm">审核</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ SHOPS ══════════ -->
+  <div id="page-shops" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><h2 style="font-size:16px;font-weight:600">我的店铺</h2></div>
+      <span class="btn btn-primary">+ 连接 Shopify 店铺</span>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:20px">🏪</div>
+          <div><div style="font-weight:600">mystichot</div><div style="font-size:11px;color:var(--muted)">mystichot.myshopify.com</div></div>
+          <span class="status ok" style="margin-left:auto">● 已连接</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div class="card-sm" style="text-align:center;padding:8px"><div style="font-size:18px;font-weight:700">312</div><div style="font-size:10px;color:var(--muted)">商品总数</div></div>
+          <div class="card-sm" style="text-align:center;padding:8px"><div style="font-size:18px;font-weight:700;color:#34d399">298</div><div style="font-size:10px;color:var(--muted)">上架中</div></div>
+          <div class="card-sm" style="text-align:center;padding:8px"><div style="font-size:18px;font-weight:700;color:#fbbf24">14</div><div style="font-size:10px;color:var(--muted)">草稿</div></div>
+        </div>
+        <div style="display:flex;gap:6px"><span class="btn btn-outline btn-sm">管理商品</span><span class="btn btn-outline btn-sm">AI 诊脉</span><span class="btn btn-outline btn-sm">断开连接</span></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#ec4899,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:20px">🌸</div>
+          <div><div style="font-weight:600">tiuous</div><div style="font-size:11px;color:var(--muted)">tiuous.myshopify.com</div></div>
+          <span class="status ok" style="margin-left:auto">● 已连接</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div class="card-sm" style="text-align:center;padding:8px"><div style="font-size:18px;font-weight:700">258</div><div style="font-size:10px;color:var(--muted)">商品总数</div></div>
+          <div class="card-sm" style="text-align:center;padding:8px"><div style="font-size:18px;font-weight:700;color:#34d399">241</div><div style="font-size:10px;color:var(--muted)">上架中</div></div>
+          <div class="card-sm" style="text-align:center;padding:8px"><div style="font-size:18px;font-weight:700;color:#fbbf24">17</div><div style="font-size:10px;color:var(--muted)">草稿</div></div>
+        </div>
+        <div style="display:flex;gap:6px"><span class="btn btn-outline btn-sm">管理商品</span><span class="btn btn-outline btn-sm">AI 诊脉</span><span class="btn btn-outline btn-sm">断开连接</span></div>
+      </div>
+      <div class="card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;min-height:160px;cursor:pointer;opacity:.6">
+        <div style="text-align:center"><div style="font-size:28px;margin-bottom:8px">+</div><div style="font-size:13px;color:var(--muted)">连接新店铺</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS ══════════ -->
+  <div id="page-settings" class="page">
+    <div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:600">设置</h2></div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">👤 账户信息</div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">用户名</div><div style="font-size:11px;color:var(--muted)">fcy5</div></div><span class="btn btn-outline btn-sm">修改</span></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">邮箱</div><div style="font-size:11px;color:var(--muted)">fcy5@example.com</div></div><span class="btn btn-outline btn-sm">修改</span></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">套餐计划</div><div style="font-size:11px;color:#a78bfa">Pro Plan · 有效期至 2026-12-31</div></div><span class="btn btn-outline btn-sm">升级</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔔 通知设置</div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">上架成功通知</div><div style="font-size:11px;color:var(--muted)">商品上架后发送邮件</div></div><div class="toggle on"></div></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">爬虫完成通知</div><div style="font-size:11px;color:var(--muted)">每次爬取结束后通知</div></div><div class="toggle"></div></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">每日报告</div><div style="font-size:11px;color:var(--muted)">每天发送数据汇总</div></div><div class="toggle on"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">🤖 AI 模型配置</div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">默认文案模型</div></div><select class="select" style="font-size:11px"><option>Gemini 2.0 Flash</option><option>GPT-4o</option><option>Qwen3 Max</option></select></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">默认图片模型</div></div><select class="select" style="font-size:11px"><option>GPT-Image 2 (推荐)</option><option>Gemini Flash Image</option></select></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">默认视频模型</div></div><select class="select" style="font-size:11px"><option>Seedance 2.0</option><option>万象 2.7</option></select></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔑 API Keys</div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">ofox AI Key</div><div style="font-size:11px;color:var(--muted);font-family:monospace">sk-of-rej***UoCC</div></div><span class="btn btn-outline btn-sm">修改</span></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">DashScope Key</div><div style="font-size:11px;color:var(--muted)">未配置</div></div><span class="btn btn-outline btn-sm">配置</span></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">Seedance Key</div><div style="font-size:11px;color:var(--muted)">未配置</div></div><span class="btn btn-outline btn-sm">配置</span></div>
+          <div class="settings-row"><div><div style="font-size:12px;font-weight:500">Google Ads</div><div style="font-size:11px;color:var(--muted)">已授权 · 待审核</div></div><span class="status warn" style="font-size:10px">待审核</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+const titles = {
+  dashboard:'Dashboard', products:'选品大厅', library:'我的选品库',
+  published:'上架历史', agent:'AI Agent 工作台', shopifyai:'Shopify AI 优化',
+  gmc:'Google 购物广告', facebook:'FB 广告库', xhs:'小红书选品',
+  suppliers:'供应商管理', shops:'我的店铺', settings:'设置'
+}
+function show(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  document.getElementById('page-' + id).classList.add('active')
+  el.classList.add('active')
+  document.getElementById('page-title').textContent = titles[id] || id
+}
+</script>
+</body>
+</html>
