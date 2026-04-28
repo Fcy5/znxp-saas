@@ -6,6 +6,8 @@ from app.models.product import Product, UserProduct
 from app.schemas.product import ProductCard, ProductDetail, ProductFilterRequest, ProductRecommendation
 from app.schemas.common import Response, PagedResponse, PageInfo
 import math
+import random
+import time
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -186,7 +188,7 @@ async def _get_xhs_recommendations(db: DBSession, limit: int = 4) -> list[Produc
 
 
 @router.get("/recommendations", response_model=Response[list[ProductRecommendation]])
-async def get_recommendations(db: DBSession, limit: int = Query(5, le=20)):
+async def get_recommendations(db: DBSession, limit: int = Query(5, le=20), seed: int = Query(0)):
     # 各维度最大值（用于归一化）
     mx_result = await db.execute(
         select(
@@ -209,7 +211,7 @@ async def get_recommendations(db: DBSession, limit: int = Query(5, le=20)):
     }
 
     # 按平台分层抽取候选，确保各平台都有代表
-    # 每个平台取 top 60（按 review_count + tiktok_views 混合排序），共约 360 候选
+    # 每个平台取 top 120（按 review_count + tiktok_views 混合排序），共约 600 候选
     PLATFORMS = ["etsy", "amazon", "shopify", "google", "tiktok"]
     candidates: list[Product] = []
     for platform in PLATFORMS:
@@ -224,15 +226,20 @@ async def get_recommendations(db: DBSession, limit: int = Query(5, le=20)):
                 func.coalesce(Product.tiktok_views, 0).desc(),
                 Product.id.asc(),
             )
-            .limit(60)
+            .limit(120)
         )
         res = await db.execute(per_q)
         candidates.extend(res.scalars().all())
 
-    # 对所有候选打分并排序
+    # 对所有候选打分并排序，在 top-200 中随机洗牌实现换一批
+    # seed=0 时自动使用 2 小时时间槽，确保每 2 小时自然轮换一批
     scored_candidates = sorted(candidates, key=lambda p: _rec_score(p, maxes), reverse=True)
+    effective_seed = seed if seed != 0 else int(time.time() // 7200)
+    top_pool = scored_candidates[:200]
+    random.Random(effective_seed).shuffle(top_pool)
+    scored_candidates = top_pool + scored_candidates[200:]
 
-    # 多样化去重：title[:60] 去重 + 每平台最多 2 条 + 每品类最多 2 条
+    # 多样化去重：title[:60] 去重 + 每平台最多 2 条（tiktok 最多 1 条）+ 每品类最多 2 条
     seen_titles: set[str] = set()
     platform_count: dict[str, int] = {}
     category_count: dict[str, int] = {}
@@ -245,7 +252,8 @@ async def get_recommendations(db: DBSession, limit: int = Query(5, le=20)):
 
         if title_key in seen_titles:
             continue
-        if platform_count.get(plat, 0) >= 2:
+        plat_max = 1 if plat == "tiktok" else 2
+        if platform_count.get(plat, 0) >= plat_max:
             continue
         if category_count.get(cat, 0) >= 2:
             continue
@@ -268,13 +276,13 @@ async def get_recommendations(db: DBSession, limit: int = Query(5, le=20)):
         )
         recs.append(rec)
 
-    # 混入小红书热品（取 3 条，插在第 2、5、8 位，分散不扎堆）
-    xhs_recs = await _get_xhs_recommendations(db, limit=3)
-    for i, xrec in enumerate(xhs_recs):
-        insert_pos = min(1 + i * 3, len(recs))
-        recs.insert(insert_pos, xrec)
+    # 混入小红书热品（取 1 条，插在第 3 位）
+    xhs_recs = await _get_xhs_recommendations(db, limit=1)
+    if xhs_recs:
+        insert_pos = min(2, len(recs))
+        recs.insert(insert_pos, xhs_recs[0])
 
-    return Response(data=recs[:limit + 3])
+    return Response(data=recs[:limit + 1])
 
 
 @router.post("/search", response_model=PagedResponse[ProductCard])
@@ -309,6 +317,7 @@ async def get_my_library(
     page: int = Query(1),
     page_size: int = Query(20),
     keyword: str | None = Query(None),
+    shop_id: int | None = Query(None),
 ):
     q = (
         select(Product)
@@ -319,6 +328,8 @@ async def get_my_library(
     )
     if keyword:
         q = q.where(Product.title.ilike(f"%{keyword}%"))
+    if shop_id:
+        q = q.where(UserProduct.shop_id == shop_id)
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar() or 0
 

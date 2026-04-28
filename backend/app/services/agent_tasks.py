@@ -400,7 +400,7 @@ Return ONLY valid JSON array, no markdown."""
         ]
 
         _update_task(task_id, status="success", progress=100,
-                     output_data={"products": output, "niche": niche})
+                     output_data={"products": output, "niche": niche, "shop_id": shop_id})
 
     except Exception as e:
         _update_task(task_id, status="failed", error_message=str(e))
@@ -568,7 +568,7 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT domain, access_token, name, niche, profile_summary, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                    "SELECT domain, shopify_access_token AS access_token, name, niche, profile_summary, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
                     (shop_id, user_id)
                 )
                 shop = cur.fetchone()
@@ -810,6 +810,96 @@ def _run_seedance_video(task_id: int, image_url: str, prompt: str,
             return
 
     _update_task(task_id, status="failed", error_message="视频生成超时（6 分钟），请重试")
+
+
+# ── run_image_processing（GPT-Image 2 图片深度处理）──────────────────────────
+
+def run_image_processing(task_id: int, product_id: int, user_id: int, operations: list):
+    """用 GPT-Image 2 对产品图做水印擦除 / 换背景 / 角标合成"""
+    _update_task(task_id, status="running", progress=10)
+    try:
+        import base64, uuid, os
+        from openai import OpenAI
+
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT title, main_image FROM products WHERE id=%s AND is_deleted=0",
+                    (product_id,)
+                )
+                product = cur.fetchone()
+        finally:
+            conn.close()
+
+        if not product or not product.get("main_image"):
+            _update_task(task_id, status="failed", error_message="商品不存在或无主图")
+            return
+
+        image_url = product["main_image"]
+        title = product.get("title", "")
+
+        # 拼接完整 URL（本地静态资源需加 host）
+        if image_url.startswith("/static"):
+            image_url = f"http://127.0.0.1:8000{image_url}"
+
+        # 按操作类型生成 prompt
+        op = operations[0] if operations else "change_background"
+        if op == "remove_watermark":
+            prompt = f"Remove all watermarks, brand logos, and text overlays from this product image. Keep the product intact and clean. Product: {title[:100]}"
+        elif op == "change_background":
+            prompt = f"Place this embroidery/textile product in a bright, clean lifestyle scene with a white or light neutral background. Keep the product as the focal point. Professional product photography style."
+        elif op == "add_badge":
+            prompt = f"Add a bold red discount badge with '30% OFF' text in the top-right corner of this product image. Keep the original product visible."
+        else:
+            prompt = f"Enhance this product image: remove background noise, improve lighting, make it suitable for e-commerce. Product: {title[:100]}"
+
+        _update_task(task_id, progress=30)
+
+        client = OpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
+
+        import httpx
+        with httpx.Client(timeout=60) as hc:
+            ref_resp = hc.get(image_url)
+            ref_bytes = ref_resp.content
+
+        resp = client.images.edit(
+            model="openai/gpt-image-2",
+            image=("product.png", ref_bytes, "image/png"),
+            prompt=prompt,
+            n=1,
+            size="1024x1024",
+            quality="low",
+        )
+
+        _update_task(task_id, progress=80)
+
+        img_data = resp.data[0]
+        upload_dir = os.path.join(os.path.dirname(__file__), "../../static/uploads/ai_images")
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"{uuid.uuid4().hex}.png"
+        filepath = os.path.join(upload_dir, filename)
+
+        if img_data.b64_json:
+            with open(filepath, "wb") as f:
+                f.write(base64.b64decode(img_data.b64_json))
+        elif img_data.url:
+            with httpx.Client(timeout=60) as hc:
+                r = hc.get(img_data.url)
+                with open(filepath, "wb") as f:
+                    f.write(r.content)
+        else:
+            _update_task(task_id, status="failed", error_message="模型未返回图片数据")
+            return
+
+        result_url = f"/static/uploads/ai_images/{filename}"
+
+        _update_task(task_id, status="success", progress=100,
+                     output_data={"image_url": result_url, "product_title": title,
+                                  "operation": op, "product_id": product_id})
+
+    except Exception as e:
+        _update_task(task_id, status="failed", error_message=str(e))
 
 
 # ── run_video_generation（视频生成，支持 wan2.7 / Seedance 2.0）──────────────

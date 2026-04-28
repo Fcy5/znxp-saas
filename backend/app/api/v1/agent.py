@@ -13,7 +13,7 @@ from app.schemas.agent import (
     VideoGenerationRequest, VideoFromUrlRequest, PublishRequest,
     ShopifySeoOptimizeRequest, ShopifySeoApplyRequest, ShopifySeoApplyResult,
     ShopifyBulkStatusRequest, ShopifyBulkPriceRequest, ShopifyBulkResult,
-    AgentTaskResponse,
+    AgentTaskResponse, ConfirmDiscoveryRequest,
 )
 from app.schemas.common import Response
 
@@ -53,6 +53,7 @@ def _task_resp(task: AgentTask) -> AgentTaskResponse:
         output_data=task.output_data,
         error_message=task.error_message,
         created_at=str(task.created_at),
+        shop_id=task.shop_id,
     )
 
 
@@ -106,6 +107,46 @@ async def trigger_auto_discovery(
     background_tasks.add_task(run_auto_discovery, task.id, body.shop_id, current_user_id, body.count)
 
     return Response(data=_task_resp(task), message="智能推品已启动，请稍后查看结果")
+
+
+# ── confirm_discovery ─────────────────────────────────────────────────────────
+
+@router.post("/confirm-discovery", response_model=Response[None])
+async def confirm_discovery(
+    body: ConfirmDiscoveryRequest,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    """用户确认推品结果，将选中商品加入选品库"""
+    if not body.product_ids:
+        raise HTTPException(status_code=400, detail="未选择任何商品")
+
+    import pymysql, re
+    from app.core.config import settings
+    url = settings.database_url
+    m = re.match(r"mysql\+\w+://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(\w+)", url)
+    if not m:
+        raise HTTPException(status_code=500, detail="DB config error")
+    db_user, db_pwd, db_host, db_port, db_name = m.groups()
+    conn = pymysql.connect(
+        host=db_host, port=int(db_port or 3306),
+        user=db_user, password=db_pwd, db=db_name,
+        charset="utf8mb4", autocommit=False,
+    )
+    try:
+        with conn.cursor() as cur:
+            for product_id in body.product_ids:
+                cur.execute(
+                    """INSERT IGNORE INTO user_products
+                       (user_id, product_id, shop_id, status, created_at, updated_at)
+                       VALUES (%s, %s, %s, 'saved', NOW(), NOW())""",
+                    (current_user_id, product_id, body.shop_id)
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return Response(data=None, message=f"已加入选品库 {len(body.product_ids)} 件商品")
 
 
 # ── batch_copywriting（异步）─────────────────────────────────────────────────
@@ -367,8 +408,9 @@ async def trigger_image_process(
                               product_id=body.product_id,
                               input_data={"operations": body.operations})
     await db.commit()
-    # TODO: 接入 Google Imagen / 其他图片处理 API
-    return Response(data=_task_resp(task), message="图片处理任务已创建（功能开发中）")
+    from app.services.agent_tasks import run_image_processing
+    background_tasks.add_task(run_image_processing, task.id, body.product_id, current_user_id, body.operations)
+    return Response(data=_task_resp(task), message="图片处理任务已创建")
 
 
 # ── video-generation（TODO）──────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Loader2, Sparkles, Zap, ChevronRight, X, Search, Check } from "lucide-react"
+import { Loader2, Sparkles, Zap, ChevronRight, X, Search, Check, ArrowRight, CheckCircle2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { agentApi, shopApi, productApi, type AgentTask, type Shop, type ProductCard, VIDEO_MODELS } from "@/lib/api"
 
@@ -46,10 +46,10 @@ const agentCapabilities = [
     type: "image_processing",
     icon: "🖼️",
     title: "图片深度处理",
-    badge: "开发中",
-    badgeVariant: "warning" as const,
-    status: "wip" as const,
-    description: "自动擦除水印和品牌标识，利用 Google Imagen 将产品融入真实欧美生活场景，生成带折扣角标的广告主图。",
+    badge: "已上线",
+    badgeVariant: "success" as const,
+    status: "live" as const,
+    description: "调用 GPT-Image 2 自动擦除水印和品牌标识，将产品融入欧美生活场景，生成带折扣角标的广告主图。",
     steps: ["水印识别擦除", "产品抠图", "AI 换背景", "角标合成"],
   },
   {
@@ -74,16 +74,11 @@ const agentCapabilities = [
   },
 ]
 
-// 已上线能力的顺序（工作流步骤）
 const WORKFLOW_STEPS = ["诊脉", "推品", "文案", "图片", "视频", "上架"]
-const WORKFLOW_LIVE = [true, true, true, false, true, true]
+const WORKFLOW_LIVE = [true, true, true, true, true, true]
 
 // ── 店铺选择弹窗 ──────────────────────────────────────────────────────────────
-function ShopSelectModal({
-  title,
-  onSelect,
-  onClose,
-}: {
+function ShopSelectModal({ title, onSelect, onClose }: {
   title: string
   onSelect: (shop: Shop) => void
   onClose: () => void
@@ -117,13 +112,10 @@ function ShopSelectModal({
                 <button
                   key={shop.id}
                   onClick={() => onSelect(shop)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
+                  className="w-full text-left px-3 py-2.5 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm">🏪</div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{shop.name}</p>
-                    <p className="text-xs text-muted-foreground">{shop.domain}</p>
-                  </div>
+                  <p className="text-sm font-medium text-foreground">{shop.name}</p>
+                  <p className="text-xs text-muted-foreground">{shop.domain}</p>
                 </button>
               ))}
             </div>
@@ -135,32 +127,36 @@ function ShopSelectModal({
 }
 
 // ── 选品弹窗（批量文案 / 单选视频用）────────────────────────────────────────
-function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案的商品", singleSelect = false }: {
+function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案的商品", singleSelect = false, shopId: defaultShopId }: {
   onConfirm: (productIds: number[], shopId?: number) => void
   onClose: () => void
   title?: string
   singleSelect?: boolean
+  shopId?: number
 }) {
   const [products, setProducts] = useState<ProductCard[]>([])
   const [loading, setLoading] = useState(true)
   const [keyword, setKeyword] = useState("")
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [shops, setShops] = useState<Shop[]>([])
-  const [shopId, setShopId] = useState<number | undefined>()
+  const [shopId, setShopId] = useState<number | undefined>(defaultShopId)
 
   useEffect(() => {
-    shopApi.list().then(r => { setShops(r.data || []); if (r.data?.[0]) setShopId(r.data[0].id) })
-  }, [])
+    shopApi.list().then(r => {
+      setShops(r.data || [])
+      if (!defaultShopId && r.data?.[0]) setShopId(r.data[0].id)
+    })
+  }, [defaultShopId])
 
   useEffect(() => {
     setLoading(true)
-    productApi.myLibrary(1, 50, keyword || undefined)
+    productApi.myLibrary(1, 50, keyword || undefined, shopId)
       .then(r => setProducts(r.data || []))
       .finally(() => setLoading(false))
-  }, [keyword])
+  }, [keyword, shopId])
 
   const toggle = (id: number) => {
-    if (singleSelect) { onConfirm([id]); return }
+    if (singleSelect) { onConfirm([id], shopId); return }
     setSelected(prev => {
       const s = new Set(prev)
       s.has(id) ? s.delete(id) : s.add(id)
@@ -180,14 +176,21 @@ function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案
             {title}
             <button onClick={onClose}><X className="w-4 h-4 text-muted-foreground" /></button>
           </CardTitle>
-          <div className="relative mt-2">
-            <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              className="pl-8 h-8 text-xs"
-              placeholder="搜索商品标题..."
-              value={keyword}
-              onChange={e => setKeyword(e.target.value)}
-            />
+          <div className="flex gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input className="pl-8 h-8 text-xs" placeholder="搜索商品标题..." value={keyword} onChange={e => setKeyword(e.target.value)} />
+            </div>
+            {shops.length > 0 && (
+              <select
+                className="text-xs bg-secondary border border-border rounded-lg px-2 py-1 text-foreground h-8"
+                value={shopId ?? ""}
+                onChange={e => setShopId(e.target.value ? Number(e.target.value) : undefined)}
+              >
+                <option value="">全部</option>
+                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
           </div>
         </CardHeader>
 
@@ -197,12 +200,14 @@ function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> 加载中...
             </div>
           ) : products.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-6">选品库为空，请先去「选品大厅」加入商品</p>
+            <p className="text-xs text-muted-foreground text-center py-6">选品库为空，请先去「选品大厅」加入商品或通过 AI 推品</p>
           ) : (
             <>
-              <button onClick={toggleAll} className="text-xs text-primary hover:underline mb-1">
-                {selected.size === products.length ? "取消全选" : `全选 (${products.length})`}
-              </button>
+              {!singleSelect && (
+                <button onClick={toggleAll} className="text-xs text-primary hover:underline mb-1">
+                  {selected.size === products.length ? "取消全选" : `全选 (${products.length})`}
+                </button>
+              )}
               {products.map(p => (
                 <div
                   key={p.id}
@@ -211,14 +216,14 @@ function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案
                     selected.has(p.id) ? "border-primary/50 bg-primary/5" : "border-border hover:border-border/80 hover:bg-secondary/50"
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                    selected.has(p.id) ? "bg-primary border-primary" : "border-muted-foreground"
-                  }`}>
-                    {selected.has(p.id) && <Check className="w-2.5 h-2.5 text-white" />}
-                  </div>
-                  {p.main_image && (
-                    <img src={p.main_image} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                  {!singleSelect && (
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      selected.has(p.id) ? "bg-primary border-primary" : "border-muted-foreground"
+                    }`}>
+                      {selected.has(p.id) && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
                   )}
+                  {p.main_image && <img src={p.main_image} alt="" className="w-10 h-10 rounded object-cover shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground truncate">{p.title}</p>
                     <p className="text-[10px] text-muted-foreground">{p.category} · ${p.price ?? "—"}</p>
@@ -229,29 +234,315 @@ function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案
           )}
         </div>
 
-        <div className="shrink-0 px-4 pb-4 pt-3 border-t border-border space-y-3">
-          {shops.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground shrink-0">参考店铺风格：</span>
-              <select
-                className="flex-1 text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground"
-                value={shopId ?? ""}
-                onChange={e => setShopId(e.target.value ? Number(e.target.value) : undefined)}
-              >
-                <option value="">不指定</option>
-                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          )}
-          <div className="flex gap-2">
+        {!singleSelect && (
+          <div className="shrink-0 px-4 pb-4 pt-3 border-t border-border flex gap-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>取消</Button>
-            <Button
-              size="sm" className="flex-1"
-              disabled={selected.size === 0}
-              onClick={() => onConfirm(Array.from(selected), shopId)}
-            >
+            <Button size="sm" className="flex-1" disabled={selected.size === 0} onClick={() => onConfirm(Array.from(selected), shopId)}>
               生成文案（{selected.size} 件）
             </Button>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+// ── 完整工作流向导（多步确认）────────────────────────────────────────────────
+type WizardPhase =
+  | "shop_select"
+  | "profile_running"
+  | "profile_done"
+  | "discovery_running"
+  | "discovery_confirm"
+
+interface DiscoveredProduct {
+  id: number
+  title: string
+  category: string
+  price: number | null
+  platform: string
+  rec_reason: string
+}
+
+function WorkflowWizard({ onClose, onTaskCreated }: {
+  onClose: () => void
+  onTaskCreated: (task: AgentTask) => void
+}) {
+  const router = useRouter()
+  const [phase, setPhase] = useState<WizardPhase>("shop_select")
+  const [shop, setShop] = useState<Shop | null>(null)
+  const [profileTask, setProfileTask] = useState<AgentTask | null>(null)
+  const [discoveryTask, setDiscoveryTask] = useState<AgentTask | null>(null)
+  const [discoveryProducts, setDiscoveryProducts] = useState<DiscoveredProduct[]>([])
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopPoll = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }
+
+  useEffect(() => () => stopPoll(), [])
+
+  const pollUntilDone = (taskId: number, onDone: (t: AgentTask) => void) => {
+    stopPoll()
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await agentApi.getTask(taskId)
+        const t = res.data!
+        if (t.status === "success") { stopPoll(); onDone(t) }
+        else if (t.status === "failed") {
+          stopPoll()
+          setError(t.error_message || "任务失败，请重试")
+        }
+      } catch {}
+    }, 2000)
+  }
+
+  const startProfile = async (selectedShop: Shop) => {
+    setShop(selectedShop)
+    setError(null)
+    setPhase("profile_running")
+    try {
+      const res = await agentApi.storeProfile(selectedShop.domain)
+      const task = res.data!
+      setProfileTask(task)
+      onTaskCreated(task)
+      pollUntilDone(task.id, doneTask => {
+        setProfileTask(doneTask)
+        setPhase("profile_done")
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "诊脉启动失败")
+      setPhase("shop_select")
+    }
+  }
+
+  const startDiscovery = async () => {
+    if (!shop) return
+    setError(null)
+    setPhase("discovery_running")
+    try {
+      const res = await agentApi.autoDiscovery(shop.id, 12)
+      const task = res.data!
+      setDiscoveryTask(task)
+      onTaskCreated(task)
+      pollUntilDone(task.id, doneTask => {
+        setDiscoveryTask(doneTask)
+        const output = doneTask.output_data as { products?: DiscoveredProduct[] } | null
+        const products = Array.isArray(output?.products) ? output!.products : []
+        setDiscoveryProducts(products)
+        setSelected(new Set(products.map(p => p.id)))
+        setPhase("discovery_confirm")
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "推品启动失败")
+      setPhase("profile_done")
+    }
+  }
+
+  const confirmAndNavigate = async () => {
+    if (!shop || selected.size === 0) return
+    setConfirming(true)
+    try {
+      await agentApi.confirmDiscovery(Array.from(selected), shop.id)
+      onClose()
+      router.push(`/library?shop_id=${shop.id}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "确认失败，请重试")
+    } finally {
+      setConfirming(false)
+    }
+  }
+
+  const toggleProduct = (id: number) => {
+    setSelected(prev => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
+  }
+
+  const profileOutput = profileTask?.output_data as { niche?: string; profile_summary?: string } | null
+  const stepLabels: Record<WizardPhase, string> = {
+    shop_select: "选择店铺",
+    profile_running: "诊脉中…",
+    profile_done: "确认诊脉结果",
+    discovery_running: "推品中…",
+    discovery_confirm: "确认推品结果",
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <Card className="w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Wizard Header */}
+        <CardHeader className="shrink-0 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                AI 全自动工作流
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">{stepLabels[phase]}</p>
+            </div>
+            <button onClick={onClose}><X className="w-4 h-4 text-muted-foreground" /></button>
+          </div>
+          {/* Step progress */}
+          <div className="flex items-center gap-1.5 mt-3">
+            {(["shop_select", "profile_running", "profile_done", "discovery_running", "discovery_confirm"] as WizardPhase[]).map((p, i) => (
+              <div key={p} className="flex items-center gap-1.5">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                  phase === p ? "bg-primary text-white" :
+                  (["shop_select", "profile_running", "profile_done", "discovery_running", "discovery_confirm"] as WizardPhase[]).indexOf(phase) > i
+                    ? "bg-emerald-500 text-white" : "bg-secondary text-muted-foreground"
+                }`}>{i + 1}</div>
+                {i < 4 && <div className={`h-px w-6 ${
+                  (["shop_select", "profile_running", "profile_done", "discovery_running", "discovery_confirm"] as WizardPhase[]).indexOf(phase) > i
+                    ? "bg-emerald-500" : "bg-border"
+                }`} />}
+              </div>
+            ))}
+          </div>
+        </CardHeader>
+
+        {/* Wizard Body */}
+        <div className="flex-1 overflow-y-auto p-5">
+
+          {/* Error */}
+          {error && (
+            <div className="mb-4 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+              {error}
+            </div>
+          )}
+
+          {/* Step 1: Shop Select */}
+          {phase === "shop_select" && (
+            <ShopSelectModal
+              title="选择要运行工作流的店铺"
+              onSelect={startProfile}
+              onClose={onClose}
+            />
+          )}
+
+          {/* Step 2: Profile Running */}
+          {phase === "profile_running" && (
+            <div className="flex flex-col items-center justify-center py-10 gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">正在诊脉「{shop?.name}」</p>
+                <p className="text-xs text-muted-foreground mt-1">爬取店铺首页，AI 分析 Niche 和转化问题…</p>
+              </div>
+              {profileTask && (
+                <div className="w-full max-w-xs">
+                  <Progress value={profileTask.progress} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Profile Done — Confirm */}
+          {phase === "profile_done" && profileOutput && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="text-sm font-medium">诊脉完成</span>
+              </div>
+              {profileOutput.niche && (
+                <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3">
+                  <p className="text-xs text-muted-foreground mb-1">店铺 Niche</p>
+                  <p className="text-sm font-medium text-foreground">{profileOutput.niche}</p>
+                </div>
+              )}
+              {profileOutput.profile_summary && (
+                <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3">
+                  <p className="text-xs text-muted-foreground mb-1">诊断摘要</p>
+                  <p className="text-xs text-foreground leading-relaxed line-clamp-5">{profileOutput.profile_summary}</p>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">AI 已分析完店铺画像，下一步将基于 Niche「{profileOutput.niche}」为你推荐最匹配的商品。</p>
+            </div>
+          )}
+
+          {/* Step 4: Discovery Running */}
+          {phase === "discovery_running" && (
+            <div className="flex flex-col items-center justify-center py-10 gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">正在推品…</p>
+                <p className="text-xs text-muted-foreground mt-1">从 Amazon / Etsy / TikTok / Google 筛选最匹配商品</p>
+              </div>
+              {discoveryTask && (
+                <div className="w-full max-w-xs">
+                  <Progress value={discoveryTask.progress} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 5: Discovery Confirm */}
+          {phase === "discovery_confirm" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">推品完成，共推荐 {discoveryProducts.length} 件</span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (selected.size === discoveryProducts.length) setSelected(new Set())
+                    else setSelected(new Set(discoveryProducts.map(p => p.id)))
+                  }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  {selected.size === discoveryProducts.length ? "取消全选" : "全选"}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">勾选要加入「{shop?.name}」选品库的商品，确认后自动跳转到该店铺的选品库。</p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {discoveryProducts.map(p => (
+                  <div
+                    key={p.id}
+                    onClick={() => toggleProduct(p.id)}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                      selected.has(p.id) ? "border-primary/50 bg-primary/5" : "border-border hover:bg-secondary/50"
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      selected.has(p.id) ? "bg-primary border-primary" : "border-muted-foreground"
+                    }`}>
+                      {selected.has(p.id) && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{p.title}</p>
+                      <p className="text-[10px] text-muted-foreground">{p.category} · {p.platform} · {p.rec_reason?.slice(0, 40)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Wizard Footer */}
+        <div className="shrink-0 px-5 py-4 border-t border-border flex items-center justify-between gap-3">
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground">
+            取消
+          </Button>
+          <div className="flex gap-2">
+            {phase === "profile_done" && (
+              <Button onClick={startDiscovery} className="gap-2">
+                确认，开始推品
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            )}
+            {phase === "discovery_confirm" && (
+              <Button onClick={confirmAndNavigate} disabled={selected.size === 0 || confirming} className="gap-2">
+                {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                加入选品库并查看（{selected.size} 件）
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </Card>
@@ -259,11 +550,13 @@ function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案
   )
 }
 
+// ── 主页面 ────────────────────────────────────────────────────────────────────
 export default function AgentPage() {
   const router = useRouter()
   const [tasks, setTasks] = useState<AgentTask[]>([])
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [modalType, setModalType] = useState<string | null>(null)
+  const [showWizard, setShowWizard] = useState(false)
   const [launching, setLaunching] = useState<string | null>(null)
   const [videoModel, setVideoModel] = useState(VIDEO_MODELS[0].value)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -288,6 +581,15 @@ export default function AgentPage() {
     return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
   }, [tasks])
 
+  // Add new task to top of list (from wizard or individual launch)
+  const handleTaskCreated = (task: AgentTask) => {
+    setTasks(prev => {
+      const exists = prev.find(t => t.id === task.id)
+      if (exists) return prev.map(t => t.id === task.id ? task : t)
+      return [task, ...prev]
+    })
+  }
+
   const handleLaunch = async (type: string, shop: Shop) => {
     setModalType(null)
     setLaunching(type)
@@ -296,9 +598,9 @@ export default function AgentPage() {
       if (type === "store_profile") {
         task = (await agentApi.storeProfile(shop.domain)).data!
       } else if (type === "auto_discovery") {
-        task = (await agentApi.autoDiscovery(shop.id, 10)).data!
+        task = (await agentApi.autoDiscovery(shop.id, 12)).data!
       }
-      if (task) setTasks(prev => [task!, ...prev])
+      if (task) handleTaskCreated(task)
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "启动失败")
     } finally { setLaunching(null) }
@@ -309,7 +611,7 @@ export default function AgentPage() {
     setLaunching("batch_copywriting")
     try {
       const task = (await agentApi.batchCopywriting(productIds, shopId)).data!
-      setTasks(prev => [task, ...prev])
+      handleTaskCreated(task)
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "启动失败")
     } finally { setLaunching(null) }
@@ -320,15 +622,15 @@ export default function AgentPage() {
     setLaunching("video_generation")
     try {
       const task = (await agentApi.videoGeneration(productId, 5, "720p", videoModel)).data!
-      setTasks(prev => [task, ...prev])
+      handleTaskCreated(task)
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "启动失败，请确认已配置视频模型 API Key")
     } finally { setLaunching(null) }
   }
 
   const handleCapabilityClick = (type: string, status: string) => {
-    if (status === "wip") return
-    if (type === "publish") { router.push("/library"); return }
+    if ((status as string) === "wip") return
+    if (type === "publish" || type === "image_processing") { router.push("/library"); return }
     setModalType(type)
   }
 
@@ -350,7 +652,7 @@ export default function AgentPage() {
                 从"懂你的店" → "跨平台筛选高溢价品" → "文案重构" → "图文处理" → "视频二创" → "API 直传上架"，全程 Agent 托管。
               </p>
             </div>
-            <Button className="gap-2 shrink-0" onClick={() => setModalType("workflow")}>
+            <Button className="gap-2 shrink-0" onClick={() => setShowWizard(true)}>
               <Sparkles className="w-4 h-4" />
               一键启动工作流
             </Button>
@@ -381,12 +683,13 @@ export default function AgentPage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {agentCapabilities.map((cap) => {
-                const isWip = cap.status === "wip"
+                const isWip = (cap.status as string) === "wip"
                 const isLaunching = launching === cap.type
                 return (
                   <Card
                     key={cap.type}
                     className={`group ${isWip ? "opacity-60" : "card-hover cursor-pointer"}`}
+                    onClick={() => !isWip && !isLaunching && handleCapabilityClick(cap.type, cap.status)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
@@ -397,11 +700,6 @@ export default function AgentPage() {
                             <Badge variant={cap.badgeVariant} className="text-[9px] mt-0.5">{cap.badge}</Badge>
                           </div>
                         </div>
-                        {isWip && (
-                          <span className="text-[10px] text-amber-400 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                            开发中
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed mb-3">{cap.description}</p>
                       {cap.type === "video_generation" && (
@@ -424,12 +722,12 @@ export default function AgentPage() {
                       </div>
                       <Button
                         size="sm" variant="outline"
-                        className={`w-full text-xs transition-opacity ${isWip ? "opacity-40 cursor-not-allowed" : "opacity-0 group-hover:opacity-100"}`}
+                        className="w-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                         disabled={isWip || isLaunching}
-                        onClick={() => handleCapabilityClick(cap.type, cap.status)}
+                        onClick={(e) => { e.stopPropagation(); handleCapabilityClick(cap.type, cap.status) }}
                       >
                         {isLaunching ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-                        {isWip ? "开发中，敬请期待" : "启动此 Agent"}
+                        启动此 Agent
                       </Button>
                     </CardContent>
                   </Card>
@@ -447,15 +745,20 @@ export default function AgentPage() {
             <div className="space-y-2">
               {loadingTasks ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> 加载中...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> 加载任务...
                 </div>
               ) : tasks.length === 0 ? (
-                <div className="text-xs text-muted-foreground py-4 text-center">
-                  暂无任务记录
-                </div>
+                <p className="text-xs text-muted-foreground py-4">暂无任务记录</p>
               ) : (
                 tasks.slice(0, 10).map(task => (
-                  <AgentTaskCard key={task.id} task={task} />
+                  <AgentTaskCard
+                    key={task.id}
+                    task={task}
+                    onConfirmDiscovery={async (productIds, shopId) => {
+                      await agentApi.confirmDiscovery(productIds, shopId)
+                      router.push(`/library${shopId ? `?shop_id=${shopId}` : ""}`)
+                    }}
+                  />
                 ))
               )}
             </div>
@@ -491,8 +794,8 @@ export default function AgentPage() {
         </div>
       </div>
 
-      {/* 店铺选择弹窗（诊脉/推品） */}
-      {modalType && !["workflow", "batch_copywriting", "video_generation"].includes(modalType) && (
+      {/* 店铺选择弹窗（诊脉/推品单独启动） */}
+      {modalType && !["batch_copywriting", "video_generation"].includes(modalType) && (
         <ShopSelectModal
           title={modalType === "store_profile" ? "选择要诊脉的店铺" : "选择要推品的店铺"}
           onSelect={(shop) => handleLaunch(modalType, shop)}
@@ -518,22 +821,11 @@ export default function AgentPage() {
         />
       )}
 
-      {/* 一键启动工作流 */}
-      {modalType === "workflow" && (
-        <ShopSelectModal
-          title="选择店铺，启动完整工作流"
-          onSelect={async (shop) => {
-            setModalType(null)
-            setLaunching("workflow")
-            try {
-              const t1 = (await agentApi.storeProfile(shop.domain)).data!
-              const t2 = (await agentApi.autoDiscovery(shop.id, 10)).data!
-              setTasks(prev => [t2, t1, ...prev])
-            } catch (e: unknown) {
-              alert(e instanceof Error ? e.message : "启动失败")
-            } finally { setLaunching(null) }
-          }}
-          onClose={() => setModalType(null)}
+      {/* 完整工作流向导 */}
+      {showWizard && (
+        <WorkflowWizard
+          onClose={() => setShowWizard(false)}
+          onTaskCreated={handleTaskCreated}
         />
       )}
     </div>

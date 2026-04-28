@@ -245,9 +245,11 @@ export default function ShopifyAIPage() {
     }, 2000)
   }, [])
 
-  const handleOptimize = async (all = false) => {
+  const handleOptimize = async (all = false, singleId?: number | string) => {
     if (!selectedShopId) return
-    const ids = all ? products.map(p => p.shopify_product_id) : Array.from(selectedIds)
+    const ids = singleId !== undefined
+      ? [singleId]
+      : all ? products.map(p => p.shopify_product_id) : Array.from(selectedIds)
     if (ids.length === 0) return
     setStep("optimizing")
     setError("")
@@ -828,11 +830,9 @@ export default function ShopifyAIPage() {
                 </Button>
                 <Button
                   onClick={() => {
-                    if (!selectedIds.has(drawerProduct.shopify_product_id)) {
-                      toggleOne(drawerProduct.shopify_product_id)
-                    }
+                    const pid = drawerProduct.shopify_product_id
                     setDrawerProduct(null)
-                    handleOptimize(false)
+                    handleOptimize(false, pid)
                   }}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
                 >

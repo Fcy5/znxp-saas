@@ -108,8 +108,8 @@ export interface ProductFilterRequest {
 }
 
 export const productApi = {
-  recommendations: (limit = 5) =>
-    request<ApiResponse<ProductRecommendation[]>>(`/products/recommendations?limit=${limit}`),
+  recommendations: (limit = 5, seed = 0) =>
+    request<ApiResponse<ProductRecommendation[]>>(`/products/recommendations?limit=${limit}&seed=${seed}`),
 
   search: (body: ProductFilterRequest) =>
     request<PagedResponse<ProductCard>>("/products/search", {
@@ -126,8 +126,8 @@ export const productApi = {
   unsave: (id: number) =>
     request<ApiResponse<null>>(`/products/${id}/save`, { method: "DELETE" }),
 
-  myLibrary: (page = 1, page_size = 20, keyword?: string) =>
-    request<PagedResponse<ProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}`),
+  myLibrary: (page = 1, page_size = 20, keyword?: string, shop_id?: number) =>
+    request<PagedResponse<ProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${shop_id ? `&shop_id=${shop_id}` : ""}`),
 
   batchSave: (product_ids: number[]) =>
     request<ApiResponse<null>>("/products/batch-save", {
@@ -444,6 +444,7 @@ export interface AgentTask {
   output_data: Record<string, unknown> | null
   error_message: string | null
   created_at: string
+  shop_id: number | null
 }
 
 export interface ProductDetail {
@@ -506,6 +507,18 @@ export const agentApi = {
 
   listShopDiagnosis: (shop_id: number) =>
     request<ApiResponse<AgentTask[]>>(`/agent/tasks?shop_id=${shop_id}&task_type=store_profile`),
+
+  confirmDiscovery: (product_ids: number[], shop_id?: number) =>
+    request<ApiResponse<null>>("/agent/confirm-discovery", {
+      method: "POST",
+      body: JSON.stringify({ product_ids, shop_id: shop_id ?? null }),
+    }),
+
+  imageProcess: (product_id: number, operations: string[]) =>
+    request<ApiResponse<AgentTask>>("/agent/image-process", {
+      method: "POST",
+      body: JSON.stringify({ product_id, operations }),
+    }),
 
   batchCopywriting: (product_ids: number[], shop_id?: number) =>
     request<ApiResponse<AgentTask>>("/agent/batch-copywriting", {

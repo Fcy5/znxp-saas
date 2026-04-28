@@ -10,8 +10,14 @@ class AgentTaskResponse(BaseModel):
     output_data: dict | None
     error_message: str | None
     created_at: str
+    shop_id: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ConfirmDiscoveryRequest(BaseModel):
+    product_ids: list[int]
+    shop_id: int | None = None
 
 
 class StoreProfileRequest(BaseModel):

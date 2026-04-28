@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import {
   Flame, Package, Rocket, Bot, TrendingUp,
-  ArrowRight, Sparkles, Zap, BarChart2,
+  ArrowRight, Sparkles, Zap, BarChart2, RefreshCw,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -106,6 +106,8 @@ export default function DashboardPage() {
   const today = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recs, setRecs] = useState<ProductRecommendation[]>([])
+  const [recsLoading, setRecsLoading] = useState(false)
+  const [recSeed, setRecSeed] = useState(0)
   const [trend, setTrend] = useState<TrendPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [trendDays, setTrendDays] = useState<7 | 14 | 30>(14)
@@ -113,9 +115,16 @@ export default function DashboardPage() {
   useEffect(() => {
     Promise.all([
       dashboardApi.stats().then(r => setStats(r.data)).catch(() => {}),
-      productApi.recommendations(20).then(r => setRecs(r.data || [])).catch(() => {}),
+      productApi.recommendations(20, recSeed).then(r => setRecs(r.data || [])).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [])
+
+  const refreshRecs = () => {
+    const newSeed = Date.now()
+    setRecSeed(newSeed)
+    setRecsLoading(true)
+    productApi.recommendations(20, newSeed).then(r => setRecs(r.data || [])).catch(() => {}).finally(() => setRecsLoading(false))
+  }
 
   useEffect(() => {
     dashboardApi.trend(trendDays).then(r => setTrend(r.data || [])).catch(() => {})
@@ -247,11 +256,17 @@ export default function DashboardPage() {
                 AI 今日推品
                 <Badge variant="warning" className="text-[10px]">每日推荐</Badge>
               </h3>
-              <Link href="/products" className="text-xs text-primary hover:underline flex items-center gap-1">
-                查看全部 <ArrowRight className="w-3 h-3" />
-              </Link>
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground" onClick={refreshRecs} disabled={recsLoading}>
+                  <RefreshCw className={`w-3 h-3 ${recsLoading ? "animate-spin" : ""}`} />
+                  换一批
+                </Button>
+                <Link href="/products" className="text-xs text-primary hover:underline flex items-center gap-1">
+                  查看全部 <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
             </div>
-            {loading ? (
+            {(loading || recsLoading) ? (
               <div className="space-y-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="h-16 rounded-xl border border-border bg-card animate-pulse" />
