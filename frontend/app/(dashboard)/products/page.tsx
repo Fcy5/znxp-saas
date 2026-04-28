@@ -1,5 +1,6 @@
 "use client"
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { ProductCard } from "@/components/product/product-card"
 import { Input } from "@/components/ui/input"
@@ -25,26 +26,69 @@ const sortOptions = [
   { label: "利润率", value: "profit_margin_estimate" },
 ]
 
-export default function ProductsPage() {
-  const [search, setSearch] = useState("")
-  const [searchInput, setSearchInput] = useState("")
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [category, setCategory] = useState("全部")
-  const [platform, setPlatform] = useState("全部")
-  const [shopifyBrand, setShopifyBrand] = useState("全部")
-  const [sort, setSort] = useState("ai_score")
-  const [page, setPage] = useState(1)
+function ProductsContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
+  // 从 URL 读取筛选状态
+  const category    = searchParams.get("cat")   ?? "全部"
+  const platform    = searchParams.get("plat")  ?? "全部"
+  const shopifyBrand = searchParams.get("brand") ?? "全部"
+  const sort        = searchParams.get("sort")  ?? "ai_score"
+  const page        = Number(searchParams.get("page") ?? "1")
+  const search      = searchParams.get("q")     ?? ""
+
+  const [searchInput, setSearchInput] = useState(search)
   const [products, setProducts] = useState<ProductCardType[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(false)
-
-  // 批量操作
   const [batchMode, setBatchMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [batchSaving, setBatchSaving] = useState(false)
   const [batchMsg, setBatchMsg] = useState("")
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollKey = "products_scroll"
+
+  // 更新 URL，不产生新历史记录
+  const updateUrl = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    Object.entries(updates).forEach(([k, v]) => {
+      if (!v || v === "全部" || v === "ai_score" && k === "sort") {
+        params.delete(k)
+      } else {
+        params.set(k, v)
+      }
+    })
+    // 筛选变化时重置 page
+    if (!("page" in updates)) params.delete("page")
+    router.replace(`/products?${params.toString()}`, { scroll: false })
+  }, [searchParams, router])
+
+  const setCategory     = (v: string) => updateUrl({ cat: v })
+  const setPlatform     = (v: string) => updateUrl({ plat: v, brand: null })
+  const setShopifyBrand = (v: string) => updateUrl({ brand: v })
+  const setSort         = (v: string) => updateUrl({ sort: v === "ai_score" ? null : v })
+  const setPage         = (v: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    v <= 1 ? params.delete("page") : params.set("page", String(v))
+    router.replace(`/products?${params.toString()}`, { scroll: false })
+  }
+
+  // 保存滚动位置（离开时）
+  useEffect(() => {
+    const save = () => sessionStorage.setItem(scrollKey, String(window.scrollY))
+    return () => { save() }
+  }, [])
+
+  // 恢复滚动位置（进入时）
+  useEffect(() => {
+    const saved = sessionStorage.getItem(scrollKey)
+    if (saved) {
+      sessionStorage.removeItem(scrollKey)
+      requestAnimationFrame(() => window.scrollTo({ top: Number(saved), behavior: "instant" }))
+    }
+  }, [])
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
@@ -70,31 +114,26 @@ export default function ProductsPage() {
   }, [page, category, platform, shopifyBrand, search, sort])
 
   useEffect(() => { fetchProducts() }, [fetchProducts])
-  useEffect(() => { setPage(1) }, [category, platform, shopifyBrand, search, sort])
 
+  // 搜索 input 同步 URL（带防抖）
   const handleSearchInput = (val: string) => {
     setSearchInput(val)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      setSearch(val)
-    }, 300)
+      updateUrl({ q: val || null })
+    }, 400)
   }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    setSearch(searchInput)
+    updateUrl({ q: searchInput || null })
   }
 
   const toggleSelect = (id: number) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
-
-  const selectAll = () => setSelectedIds(new Set(products.map(p => p.id)))
+  const selectAll  = () => setSelectedIds(new Set(products.map(p => p.id)))
   const clearSelect = () => setSelectedIds(new Set())
 
   const handleBatchSave = async () => {
@@ -116,7 +155,6 @@ export default function ProductsPage() {
     <div className="flex flex-col min-h-full">
       <Header title="选品大厅" />
 
-      {/* 批量操作浮动栏 */}
       {batchMode && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl bg-card border border-border shadow-2xl shadow-black/40">
           <span className="text-sm text-foreground font-medium">
@@ -135,10 +173,11 @@ export default function ProductsPage() {
           </button>
         </div>
       )}
+
       <div className="flex-1 p-6">
         <div className="flex gap-6">
 
-          {/* Sidebar — 平台 + Shopify店铺 */}
+          {/* Sidebar */}
           <div className="w-44 shrink-0 space-y-4">
             <Card>
               <CardHeader className="pb-3">
@@ -151,7 +190,7 @@ export default function ProductsPage() {
                 {platforms.map(p => (
                   <button
                     key={p}
-                    onClick={() => { setPlatform(p); setShopifyBrand("全部") }}
+                    onClick={() => setPlatform(p)}
                     className={`w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors capitalize ${platform === p ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
                   >
                     {p}
@@ -183,7 +222,7 @@ export default function ProductsPage() {
           {/* Main */}
           <div className="flex-1 min-w-0 space-y-4">
 
-            {/* 商品种类 tabs */}
+            {/* 品类 tabs */}
             <div className="flex items-center gap-2 flex-wrap">
               {categories.map(c => (
                 <button
@@ -282,11 +321,11 @@ export default function ProductsPage() {
             {/* 分页 */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || loading}>
+                <Button size="sm" variant="outline" onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1 || loading}>
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </Button>
                 <span className="text-xs text-muted-foreground">第 {page} / {totalPages} 页</span>
-                <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages || loading}>
+                <Button size="sm" variant="outline" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages || loading}>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -295,5 +334,20 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col min-h-full">
+        <Header title="选品大厅" />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    }>
+      <ProductsContent />
+    </Suspense>
   )
 }
