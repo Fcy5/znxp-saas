@@ -240,12 +240,13 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
             async with httpx.AsyncClient(timeout=60) as hc:
                 ref_resp = await hc.get(ref_url)
                 ref_bytes = ref_resp.content
+            edit_size = body.size if body.size != "auto" else "1024x1024"
             resp = client.images.edit(
                 model=body.model,
                 image=("reference.png", ref_bytes, "image/png"),
                 prompt=body.prompt[:4000],
                 n=1,
-                size=body.size,
+                size=edit_size,
                 quality=body.quality,
             )
         else:
