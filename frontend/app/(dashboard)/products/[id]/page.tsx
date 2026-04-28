@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
-import { productApi, shopApi, publishApi, uploadApi, agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_PROMPTS, STATIC_BASE, type ProductDetail, type Shop, type SizeVariant } from "@/lib/api"
+import { productApi, shopApi, publishApi, uploadApi, agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_SIZES, IMAGE_QUALITIES, IMAGE_PROMPTS, STATIC_BASE, type ProductDetail, type Shop, type SizeVariant } from "@/lib/api"
 import { AgentWorkflow } from "@/components/agent/agent-workflow"
 
 const APPAREL_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"]
@@ -65,6 +65,8 @@ export default function ProductDetailPage() {
   const [imgError, setImgError] = useState("")
   const [generatedImgs, setGeneratedImgs] = useState<string[]>([])
   const [useRefImg, setUseRefImg] = useState(true)
+  const [imgSize, setImgSize] = useState("auto")
+  const [imgQuality, setImgQuality] = useState("low")
 
   const handleGenerateImage = async () => {
     if (!imgPrompt.trim()) return
@@ -78,7 +80,7 @@ export default function ProductDetailPage() {
       const referenceUrl = useRefImg && product?.main_image && product.main_image.startsWith("http")
         ? product.main_image
         : undefined
-      const res = await agentApi.generateImage(finalPrompt, imgModel, referenceUrl)
+      const res = await agentApi.generateImage(finalPrompt, imgModel, referenceUrl, imgSize, imgQuality)
       if (res.data?.url) {
         setGeneratedImgs(prev => [res.data!.url, ...prev])
       }
@@ -742,6 +744,24 @@ export default function ProductDetailPage() {
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* 尺寸 + 质量 */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">尺寸</label>
+                  <select value={imgSize} onChange={e => setImgSize(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                    {IMAGE_SIZES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">质量</label>
+                  <select value={imgQuality} onChange={e => setImgQuality(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                    {IMAGE_QUALITIES.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
+                  </select>
+                </div>
               </div>
 
               {/* 快捷提示词 */}

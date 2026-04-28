@@ -246,6 +246,7 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
                 prompt=body.prompt[:4000],
                 n=1,
                 size=body.size,
+                quality=body.quality,
             )
         else:
             resp = client.images.generate(
@@ -253,6 +254,7 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
                 prompt=body.prompt[:4000],
                 n=1,
                 size=body.size,
+                quality=body.quality,
             )
 
         img_data = resp.data[0]

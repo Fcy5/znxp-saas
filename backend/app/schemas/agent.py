@@ -51,7 +51,8 @@ class ImageProcessRequest(BaseModel):
 class ImageGenerateRequest(BaseModel):
     prompt: str
     model: str = "openai/gpt-image-2"
-    size: str = "1024x1024"
+    size: str = "auto"
+    quality: str = "low"
     reference_image_url: str | None = None  # 原商品图，用于 image edit
 
 

@@ -400,6 +400,21 @@ export const IMAGE_MODELS = [
   { value: "google/gemini-2.5-flash-image",          label: "Gemini 2.5 Flash Image" },
 ]
 
+export const IMAGE_SIZES = [
+  { value: "auto",      label: "自动" },
+  { value: "1024x1024", label: "1:1  (1024×1024)" },
+  { value: "1536x1024", label: "3:2  (1536×1024)" },
+  { value: "1024x1536", label: "2:3  (1024×1536)" },
+  { value: "1792x1024", label: "16:9 (1792×1024)" },
+  { value: "1024x1792", label: "9:16 (1024×1792)" },
+]
+
+export const IMAGE_QUALITIES = [
+  { value: "low",    label: "低质量（省Token）" },
+  { value: "medium", label: "中质量" },
+  { value: "high",   label: "高质量（慢）" },
+]
+
 export const VIDEO_MODELS = [
   { value: "doubao-seedance-2-0-260128", label: "Seedance 2.0 (ByteDance 推荐)" },
   { value: "wan2.7-i2v",                label: "万象 2.7 (阿里云)" },
@@ -459,10 +474,10 @@ export const agentApi = {
       body: JSON.stringify({ product_id, language, model }),
     }),
 
-  generateImage: (prompt: string, model = "openai/gpt-image-2", referenceImageUrl?: string) =>
+  generateImage: (prompt: string, model = "openai/gpt-image-2", referenceImageUrl?: string, size = "auto", quality = "low") =>
     request<ApiResponse<{ url: string }>>("/agent/image-generate", {
       method: "POST",
-      body: JSON.stringify({ prompt, model, size: "1024x1024", reference_image_url: referenceImageUrl }),
+      body: JSON.stringify({ prompt, model, size, quality, reference_image_url: referenceImageUrl }),
     }),
 
   generateSocialCopy: (product_id: number, model?: string) =>

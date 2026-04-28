@@ -8,7 +8,7 @@ import {
   Loader2, Check, ChevronRight, X, Copy, Download, ImageOff,
 } from "lucide-react"
 import {
-  agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_PROMPTS, STATIC_BASE,
+  agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_SIZES, IMAGE_QUALITIES, IMAGE_PROMPTS, STATIC_BASE,
   type CopywritingResult, type SocialCopyResult,
 } from "@/lib/api"
 
@@ -42,6 +42,8 @@ function PublishWorkflow({ productId, productTitle, productImage, onClose, onPub
   const [selectedImgs, setSelectedImgs] = useState<Set<string>>(new Set())
   const [imgError, setImgError] = useState("")
   const [useRefImg, setUseRefImg] = useState(true)
+  const [imgSize, setImgSize] = useState("auto")
+  const [imgQuality, setImgQuality] = useState("low")
 
   const handleGenerateCopy = async () => {
     setCopyLoading(true); setCopyError("")
@@ -59,7 +61,7 @@ function PublishWorkflow({ productId, productTitle, productImage, onClose, onPub
   const handleGenerateImage = async () => {
     setImgLoading(true); setImgError("")
     try {
-      const res = await agentApi.generateImage(imgPrompt, imgModel, useRefImg ? productImage : undefined)
+      const res = await agentApi.generateImage(imgPrompt, imgModel, useRefImg ? productImage : undefined, imgSize, imgQuality)
       if (res.data?.url) setGeneratedImgs(prev => [res.data!.url, ...prev])
     } catch (e: unknown) { setImgError(e instanceof Error ? e.message : "生成失败") }
     finally { setImgLoading(false) }
@@ -147,6 +149,14 @@ function PublishWorkflow({ productId, productTitle, productImage, onClose, onPub
           <select value={imgModel} onChange={e => setImgModel(e.target.value)} className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground">
             {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={imgSize} onChange={e => setImgSize(e.target.value)} className="text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground">
+              {IMAGE_SIZES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+            <select value={imgQuality} onChange={e => setImgQuality(e.target.value)} className="text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground">
+              {IMAGE_QUALITIES.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
+            </select>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {IMAGE_PROMPTS.map(t => (
               <button key={t.label} onClick={() => setImgPrompt(t.prompt)}
@@ -246,6 +256,8 @@ function SocialWorkflow({ productId, productImage }: SocialWorkflowProps) {
   const [generatedImgs, setGeneratedImgs] = useState<string[]>([])
   const [imgError, setImgError] = useState("")
   const [useRefImg, setUseRefImg] = useState(true)
+  const [imgSize, setImgSize] = useState("auto")
+  const [imgQuality, setImgQuality] = useState("low")
 
   const handleGenerateCopy = async () => {
     setCopyLoading(true); setCopyError("")
@@ -259,7 +271,7 @@ function SocialWorkflow({ productId, productImage }: SocialWorkflowProps) {
   const handleGenerateImage = async () => {
     setImgLoading(true); setImgError("")
     try {
-      const res = await agentApi.generateImage(imgPrompt, imgModel, useRefImg ? productImage : undefined)
+      const res = await agentApi.generateImage(imgPrompt, imgModel, useRefImg ? productImage : undefined, imgSize, imgQuality)
       if (res.data?.url) setGeneratedImgs(prev => [res.data!.url, ...prev])
     } catch (e: unknown) { setImgError(e instanceof Error ? e.message : "生成失败") }
     finally { setImgLoading(false) }
@@ -342,6 +354,14 @@ function SocialWorkflow({ productId, productImage }: SocialWorkflowProps) {
           className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground">
           {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
+        <div className="grid grid-cols-2 gap-2">
+          <select value={imgSize} onChange={e => setImgSize(e.target.value)} className="text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground">
+            {IMAGE_SIZES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+          <select value={imgQuality} onChange={e => setImgQuality(e.target.value)} className="text-xs px-3 py-2 rounded-lg border border-border bg-secondary text-foreground">
+            {IMAGE_QUALITIES.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
+          </select>
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {SOCIAL_IMAGE_PROMPTS.map(t => (
             <button key={t.label} onClick={() => setImgPrompt(t.prompt)}
