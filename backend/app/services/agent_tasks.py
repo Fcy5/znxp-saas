@@ -687,31 +687,47 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
 
         print(f"[SEO] fetching shopify products from {domain}")
         _update_task(task_id, progress=15)
+
         _shopify_url = f"https://{domain}/admin/api/2024-04/products.json"
         _shopify_params = {"limit": 250, "fields": "id,title,images,variants,status,product_type,tags,handle,body_html"}
+
+        # --- 核心修复 1：如果指定了商品，直接让 Shopify 只返回这些，彻底杜绝 429 限流 ---
+        if product_ids:
+            _shopify_params["ids"] = ",".join(str(pid) for pid in product_ids)
+
         _shopify_headers = {"X-Shopify-Access-Token": token, "Content-Type": "application/json"}
         all_products = []
         import time as _time
-        with httpx.Client(timeout=30) as _hc:
-            _url = _shopify_url
-            while _url:
-                for _attempt in range(3):
-                    _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
-                    if _resp.status_code == 429:
-                        _wait_sec = float(_resp.headers.get("Retry-After", "2"))
-                        print(f"[SEO] 429 rate limit, waiting {_wait_sec}s")
-                        _time.sleep(_wait_sec)
-                        continue
-                    _resp.raise_for_status()
-                    break
-                all_products.extend(_resp.json().get("products", []))
-                _link = _resp.headers.get("Link", "")
-                _url = None
-                for _part in _link.split(","):
-                    _part = _part.strip()
-                    if 'rel="next"' in _part:
-                        _url = _part.split(";")[0].strip().strip("<>")
-                _shopify_params = {}
+
+        # --- 核心修复 2：增加网络异常捕获，防止多次限流后线程死掉导致任务永远卡在 15% ---
+        try:
+            with httpx.Client(timeout=30) as _hc:
+                _url = _shopify_url
+                while _url:
+                    for _attempt in range(3):
+                        _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
+                        if _resp.status_code == 429:
+                            _wait_sec = float(_resp.headers.get("Retry-After", "2"))
+                            print(f"[SEO] 429 rate limit, waiting {_wait_sec}s")
+                            _time.sleep(_wait_sec)
+                            continue
+                        _resp.raise_for_status()
+                        break
+                    else:
+                        # 3次重试都 429 的话，主动抛错退出
+                        raise Exception("Shopify 接口请求过于频繁被限流")
+
+                    all_products.extend(_resp.json().get("products", []))
+                    _link = _resp.headers.get("Link", "")
+                    _url = None
+                    for _part in _link.split(","):
+                        _part = _part.strip()
+                        if 'rel="next"' in _part:
+                            _url = _part.split(";")[0].strip().strip("<>")
+                    _shopify_params = {}
+        except Exception as e:
+            _update_task(task_id, status="failed", error_message=f"请求 Shopify 失败: {str(e)}")
+            return
 
         print(f"[SEO] fetched {len(all_products)} products total")
         if product_ids:
@@ -731,7 +747,6 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
             return
 
         print(f"[SEO] starting AI for {total} products, model={settings.ai_model}")
-        # 最多 10 线程并发 AI 调用，90 秒强制超时兜底
         from concurrent.futures import wait as _wait
         results_map: dict[int, dict] = {}
         with ThreadPoolExecutor(max_workers=min(10, total)) as pool:
