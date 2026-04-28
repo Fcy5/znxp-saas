@@ -52,7 +52,8 @@ def _update_task(task_id: int, **kwargs):
 
 
 def _ai_client():
-    return OpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
+    return OpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url,
+                  timeout=httpx.Timeout(connect=10, read=60, write=10, pool=5))
 
 
 # ── store_profile ─────────────────────────────────────────────────────────────
@@ -614,18 +615,12 @@ Return ONLY valid JSON with these exact keys:
 }}"""
 
     messages = [{"role": "user", "content": prompt}]
-    if img_url:
-        messages = [{"role": "user", "content": [
-            {"type": "image_url", "image_url": {"url": img_url}},
-            {"type": "text", "text": prompt},
-        ]}]
 
     try:
         resp = ai.chat.completions.create(
             model=settings.ai_model,
             messages=messages,
             temperature=0.4,
-            timeout=60,
         )
         raw = resp.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -724,18 +719,27 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
             _update_task(task_id, status="failed", error_message="AI API Key 未配置")
             return
 
-        # 最多 10 线程并发 AI 调用
+        # 最多 10 线程并发 AI 调用，90 秒强制超时兜底
+        from concurrent.futures import wait as _wait, FIRST_COMPLETED
         results_map: dict[int, dict] = {}
-        completed = 0
         with ThreadPoolExecutor(max_workers=min(10, total)) as pool:
             futures = {
                 pool.submit(_seo_one_product_sync, p, shop_name, niche, target_audience, brand_style): i
                 for i, p in enumerate(all_products)
             }
-            for fut in as_completed(futures):
+            done, not_done = _wait(futures, timeout=90)
+            for fut in done:
                 results_map[futures[fut]] = fut.result()
-                completed += 1
-                _update_task(task_id, progress=20 + int(completed / total * 75))
+            for fut in not_done:
+                fut.cancel()
+                results_map[futures[fut]] = {
+                    "shopify_product_id": all_products[futures[fut]]["id"],
+                    "title": all_products[futures[fut]].get("title", ""),
+                    "image_url": "",
+                    "images": [],
+                    "error": "AI 请求超时",
+                }
+        _update_task(task_id, progress=95)
 
         results = [results_map[i] for i in range(total)]
         success_count = sum(1 for r in results if "error" not in r)
