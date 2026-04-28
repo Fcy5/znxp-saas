@@ -170,6 +170,11 @@ def job_google():
     _run("google_sync_products.py", label="Google-Sync")
 
 
+def job_xhs():
+    """小红书刺绣商品爬取（所有关键词）"""
+    _run("xhs_spider.py", label="XHS")
+
+
 # ── 调度器初始化 ───────────────────────────────────────────────────────────────
 
 _scheduler: BackgroundScheduler | None = None
@@ -193,6 +198,9 @@ def start_scheduler():
 
     # Google：每 3 天 06:00（SerpAPI 有额度限制）
     _scheduler.add_job(job_google, CronTrigger(hour=6, minute=0, day="*/3"), id="google", name="Google每3天爬取", replace_existing=True)
+
+    # XHS：每天 08:00（小红书刺绣商品）
+    _scheduler.add_job(job_xhs, CronTrigger(hour=8, minute=0), id="xhs", name="XHS每日爬取", replace_existing=True)
 
     _scheduler.start()
     logger.info("✅ 定时爬虫调度器已启动")

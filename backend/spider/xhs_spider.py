@@ -444,5 +444,10 @@ def run_spider(keywords: list = None, max_scrolls: int = 10, cookies_path: str =
 
 
 if __name__ == "__main__":
-    # 本地测试：只跑前3个关键词
-    print(run_spider(keywords=EMBROIDERY_KEYWORDS[:3], max_scrolls=5, headless=False))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-scrolls", type=int, default=8)
+    parser.add_argument("--no-headless", dest="headless", action="store_false", default=True)
+    args = parser.parse_args()
+    result = run_spider(keywords=None, max_scrolls=args.max_scrolls, headless=args.headless)
+    print(result)
