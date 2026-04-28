@@ -560,89 +560,24 @@ Rules: natural keywords, warm gift-oriented tone, Q&A for GEO/AI search, return 
 
 # ── shopify_seo_optimize ──────────────────────────────────────────────────────
 
-def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_ids: list | None = None):
-    """拉取 Shopify 商品 → AI 生成 SEO → 存预览，不自动写入 Shopify"""
-    _update_task(task_id, status="running", progress=5)
-    try:
-        conn = _db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT domain, shopify_access_token AS access_token, name, niche, profile_summary, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
-                    (shop_id, user_id)
-                )
-                shop = cur.fetchone()
-        finally:
-            conn.close()
+async def _seo_one_product(product: dict, shop_name: str, niche: str,
+                            target_audience: str, brand_style: str) -> dict:
+    """为单个商品异步调用 AI 生成 SEO，供 asyncio.gather 并发调用"""
+    from openai import AsyncOpenAI
+    ai = AsyncOpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
 
-        if not shop:
-            _update_task(task_id, status="failed", error_message="店铺不存在或无权限")
-            return
-        if not shop.get("access_token"):
-            _update_task(task_id, status="failed", error_message="店铺未配置 Access Token")
-            return
+    pid = product["id"]
+    title = product.get("title") or ""
+    body_html = (product.get("body_html") or "")[:300]
+    product_type = product.get("product_type") or ""
+    tags = ", ".join((product.get("tags") or "").split(",")[:8])
+    variants = product.get("variants") or []
+    price = variants[0].get("price", "") if variants else ""
+    images = product.get("images") or []
+    first_img = images[0] if images else {}
+    img_url = first_img.get("src", "")
 
-        domain = shop["domain"]
-        token = shop["access_token"]
-        shop_name = shop.get("name") or domain
-        niche = shop.get("niche") or "custom embroidery gifts"
-        target_audience = shop.get("target_audience") or "US buyers looking for personalized gifts"
-        brand_style = (shop.get("profile_summary") or "")[:600]
-
-        _update_task(task_id, progress=15)
-        # 同步拉取 Shopify 商品（避免 asyncio.run 在后台线程中冲突）
-        _shopify_url = f"https://{domain}/admin/api/2024-04/products.json"
-        _shopify_params = {"limit": 250, "fields": "id,title,images,variants,status,product_type,tags,handle,body_html"}
-        _shopify_headers = {"X-Shopify-Access-Token": token, "Content-Type": "application/json"}
-        all_products = []
-        with httpx.Client(timeout=30) as _hc:
-            _url = _shopify_url
-            while _url:
-                _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
-                _resp.raise_for_status()
-                all_products.extend(_resp.json().get("products", []))
-                _link = _resp.headers.get("Link", "")
-                _url = None
-                for _part in _link.split(","):
-                    _part = _part.strip()
-                    if 'rel="next"' in _part:
-                        _url = _part.split(";")[0].strip().strip("<>")
-                _shopify_params = {}
-
-        if product_ids:
-            pid_set = {int(x) for x in product_ids}
-            all_products = [p for p in all_products if int(p["id"]) in pid_set]
-
-        if not all_products:
-            _update_task(task_id, status="failed", error_message="未找到商品，请检查店铺 Token 是否有效")
-            return
-
-        total = len(all_products)
-        _update_task(task_id, progress=20)
-
-        if not settings.ai_api_key:
-            _update_task(task_id, status="failed", error_message="AI API Key 未配置")
-            return
-
-        ai = _ai_client()
-        results = []
-
-        for i, product in enumerate(all_products):
-            progress = 20 + int((i / total) * 70)
-            _update_task(task_id, progress=progress)
-
-            pid = product["id"]
-            title = product.get("title") or ""
-            body_html = (product.get("body_html") or "")[:300]
-            product_type = product.get("product_type") or ""
-            tags = ", ".join((product.get("tags") or "").split(",")[:8])
-            variants = product.get("variants") or []
-            price = variants[0].get("price", "") if variants else ""
-            images = product.get("images") or []
-            first_img = images[0] if images else {}
-            img_url = first_img.get("src", "")
-
-            prompt = f"""You are a senior Shopify SEO specialist for the store "{shop_name}".
+    prompt = f"""You are a senior Shopify SEO specialist for the store "{shop_name}".
 
 Store context:
 - Niche: {niche}
@@ -679,51 +614,109 @@ Return ONLY valid JSON with these exact keys:
   }}
 }}"""
 
-            messages = [{"role": "user", "content": prompt}]
-            if img_url:
-                messages = [{"role": "user", "content": [
-                    {"type": "image_url", "image_url": {"url": img_url}},
-                    {"type": "text", "text": prompt},
-                ]}]
+    messages = [{"role": "user", "content": prompt}]
+    if img_url:
+        messages = [{"role": "user", "content": [
+            {"type": "image_url", "image_url": {"url": img_url}},
+            {"type": "text", "text": prompt},
+        ]}]
 
-            try:
-                resp = ai.chat.completions.create(
-                    model=settings.ai_model,
-                    messages=messages,
-                    temperature=0.4,
+    try:
+        resp = await ai.chat.completions.create(
+            model=settings.ai_model,
+            messages=messages,
+            temperature=0.4,
+        )
+        raw = resp.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        data = json.loads(raw.strip())
+
+        schema = data.get("structured_data") or {}
+        if img_url and schema:
+            schema["image"] = img_url
+
+        return {
+            "shopify_product_id": pid,
+            "title": title,
+            "image_url": img_url,
+            "images": [{"id": img["id"], "alt": img.get("alt", "")} for img in images[:3]],
+            "current_seo_title": "",
+            "current_meta_desc": "",
+            "new_seo_title": data.get("seo_title", "")[:70],
+            "new_meta_desc": data.get("meta_description", "")[:155],
+            "new_alt_text": data.get("alt_text", "")[:125],
+            "structured_data": schema,
+        }
+    except Exception as e:
+        return {
+            "shopify_product_id": pid,
+            "title": title,
+            "image_url": img_url,
+            "images": [],
+            "error": str(e),
+        }
+
+
+async def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_ids: list | None = None):
+    """拉取 Shopify 商品 → 并发 AI 生成 SEO → 存预览，不自动写入 Shopify"""
+    import asyncio
+    _update_task(task_id, status="running", progress=5)
+    try:
+        conn = _db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT domain, shopify_access_token AS access_token, name, niche, profile_summary, target_audience FROM shops WHERE id=%s AND user_id=%s AND is_deleted=0",
+                    (shop_id, user_id)
                 )
-                raw = resp.choices[0].message.content.strip()
-                if raw.startswith("```"):
-                    raw = raw.split("```")[1]
-                    if raw.startswith("json"):
-                        raw = raw[4:]
-                data = json.loads(raw.strip())
+                shop = cur.fetchone()
+        finally:
+            conn.close()
 
-                # structured_data 补充图片字段
-                schema = data.get("structured_data") or {}
-                if img_url and schema:
-                    schema["image"] = img_url
+        if not shop:
+            _update_task(task_id, status="failed", error_message="店铺不存在或无权限")
+            return
+        if not shop.get("access_token"):
+            _update_task(task_id, status="failed", error_message="店铺未配置 Access Token")
+            return
 
-                results.append({
-                    "shopify_product_id": pid,
-                    "title": title,
-                    "image_url": img_url,
-                    "images": [{"id": img["id"], "alt": img.get("alt", "")} for img in images[:3]],
-                    "current_seo_title": "",
-                    "current_meta_desc": "",
-                    "new_seo_title": data.get("seo_title", "")[:70],
-                    "new_meta_desc": data.get("meta_description", "")[:155],
-                    "new_alt_text": data.get("alt_text", "")[:125],
-                    "structured_data": schema,
-                })
-            except Exception as e:
-                results.append({
-                    "shopify_product_id": pid,
-                    "title": title,
-                    "image_url": img_url,
-                    "images": [],
-                    "error": str(e),
-                })
+        domain = shop["domain"]
+        token = shop["access_token"]
+        shop_name = shop.get("name") or domain
+        niche = shop.get("niche") or "custom embroidery gifts"
+        target_audience = shop.get("target_audience") or "US buyers looking for personalized gifts"
+        brand_style = (shop.get("profile_summary") or "")[:600]
+
+        _update_task(task_id, progress=15)
+        from app.utils.shopify import list_products as _list_products
+        all_products = await _list_products(domain, token, limit=250)
+
+        if product_ids:
+            pid_set = {int(x) for x in product_ids}
+            all_products = [p for p in all_products if int(p["id"]) in pid_set]
+
+        if not all_products:
+            _update_task(task_id, status="failed", error_message="未找到商品，请检查店铺 Token 是否有效")
+            return
+
+        total = len(all_products)
+        _update_task(task_id, progress=20)
+
+        if not settings.ai_api_key:
+            _update_task(task_id, status="failed", error_message="AI API Key 未配置")
+            return
+
+        # 并发 AI 调用（最多 10 个并发，避免超过 API 限流）
+        sem = asyncio.Semaphore(10)
+        async def _bounded(p):
+            async with sem:
+                return await _seo_one_product(p, shop_name, niche, target_audience, brand_style)
+
+        results = await asyncio.gather(*[_bounded(p) for p in all_products])
+        results = list(results)
 
         success_count = sum(1 for r in results if "error" not in r)
         _update_task(task_id, status="success", progress=100, output_data={
