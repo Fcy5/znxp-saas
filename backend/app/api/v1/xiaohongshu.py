@@ -64,7 +64,7 @@ class XhsPublishRequest(BaseModel):
 # ── 内部函数 ──
 def _run_spider_thread(max_scrolls: int, headless: bool = True):
     import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../spider"))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../spider"))
     from xhs_spider import run_spider, EMBROIDERY_KEYWORDS
     _spider_status["running"] = True
     _spider_status["last_run_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -123,7 +123,7 @@ def _parse_json_field(val):
 async def get_keywords(current_user_id: CurrentUser):
     """获取内置刺绣关键词列表"""
     import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../spider"))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../spider"))
     from xhs_spider import EMBROIDERY_KEYWORDS
     return Response(data=EMBROIDERY_KEYWORDS)
 
@@ -291,7 +291,7 @@ async def publish_xhs_product(body: XhsPublishRequest, current_user_id: CurrentU
 def _load_xhs_cookie_header() -> str:
     """从 xhs_cookies.json 组装 Cookie 请求头"""
     try:
-        cookies_path = os.path.join(os.path.dirname(__file__), "../../../../spider/xhs_cookies.json")
+        cookies_path = os.path.join(os.path.dirname(__file__), "../../../spider/xhs_cookies.json")
         if not os.path.exists(cookies_path):
             return ""
         with open(cookies_path, "r", encoding="utf-8") as f:

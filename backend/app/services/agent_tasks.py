@@ -658,7 +658,6 @@ Return ONLY valid JSON with these exact keys:
 def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_ids: list | None = None):
     """拉取 Shopify 商品 → ThreadPoolExecutor 并发 AI 生成 SEO → 存预览"""
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    print(f"[SEO] task={task_id} shop={shop_id} user={user_id} pids={product_ids}")
     _update_task(task_id, status="running", progress=5)
     try:
         conn = _db()
@@ -672,7 +671,6 @@ def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_i
         finally:
             conn.close()
 
-        print(f"[SEO] shop query done: {bool(shop)}")
         if not shop:
             _update_task(task_id, status="failed", error_message="店铺不存在或无权限")
             return
