@@ -560,11 +560,10 @@ Rules: natural keywords, warm gift-oriented tone, Q&A for GEO/AI search, return 
 
 # ── shopify_seo_optimize ──────────────────────────────────────────────────────
 
-async def _seo_one_product(product: dict, shop_name: str, niche: str,
-                            target_audience: str, brand_style: str) -> dict:
-    """为单个商品异步调用 AI 生成 SEO，供 asyncio.gather 并发调用"""
-    from openai import AsyncOpenAI
-    ai = AsyncOpenAI(api_key=settings.ai_api_key, base_url=settings.ai_base_url)
+def _seo_one_product_sync(product: dict, shop_name: str, niche: str,
+                           target_audience: str, brand_style: str) -> dict:
+    """同步调用 AI 生成 SEO，供 ThreadPoolExecutor 并发执行"""
+    ai = _ai_client()
 
     pid = product["id"]
     title = product.get("title") or ""
@@ -622,10 +621,11 @@ Return ONLY valid JSON with these exact keys:
         ]}]
 
     try:
-        resp = await ai.chat.completions.create(
+        resp = ai.chat.completions.create(
             model=settings.ai_model,
             messages=messages,
             temperature=0.4,
+            timeout=60,
         )
         raw = resp.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -660,9 +660,9 @@ Return ONLY valid JSON with these exact keys:
         }
 
 
-async def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_ids: list | None = None):
-    """拉取 Shopify 商品 → 并发 AI 生成 SEO → 存预览，不自动写入 Shopify"""
-    import asyncio
+def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, product_ids: list | None = None):
+    """拉取 Shopify 商品 → ThreadPoolExecutor 并发 AI 生成 SEO → 存预览"""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     _update_task(task_id, status="running", progress=5)
     try:
         conn = _db()
@@ -691,8 +691,23 @@ async def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, pro
         brand_style = (shop.get("profile_summary") or "")[:600]
 
         _update_task(task_id, progress=15)
-        from app.utils.shopify import list_products as _list_products
-        all_products = await _list_products(domain, token, limit=250)
+        _shopify_url = f"https://{domain}/admin/api/2024-04/products.json"
+        _shopify_params = {"limit": 250, "fields": "id,title,images,variants,status,product_type,tags,handle,body_html"}
+        _shopify_headers = {"X-Shopify-Access-Token": token, "Content-Type": "application/json"}
+        all_products = []
+        with httpx.Client(timeout=30) as _hc:
+            _url = _shopify_url
+            while _url:
+                _resp = _hc.get(_url, headers=_shopify_headers, params=_shopify_params)
+                _resp.raise_for_status()
+                all_products.extend(_resp.json().get("products", []))
+                _link = _resp.headers.get("Link", "")
+                _url = None
+                for _part in _link.split(","):
+                    _part = _part.strip()
+                    if 'rel="next"' in _part:
+                        _url = _part.split(";")[0].strip().strip("<>")
+                _shopify_params = {}
 
         if product_ids:
             pid_set = {int(x) for x in product_ids}
@@ -709,15 +724,20 @@ async def run_shopify_seo_optimize(task_id: int, shop_id: int, user_id: int, pro
             _update_task(task_id, status="failed", error_message="AI API Key 未配置")
             return
 
-        # 并发 AI 调用（最多 10 个并发，避免超过 API 限流）
-        sem = asyncio.Semaphore(10)
-        async def _bounded(p):
-            async with sem:
-                return await _seo_one_product(p, shop_name, niche, target_audience, brand_style)
+        # 最多 10 线程并发 AI 调用
+        results_map: dict[int, dict] = {}
+        completed = 0
+        with ThreadPoolExecutor(max_workers=min(10, total)) as pool:
+            futures = {
+                pool.submit(_seo_one_product_sync, p, shop_name, niche, target_audience, brand_style): i
+                for i, p in enumerate(all_products)
+            }
+            for fut in as_completed(futures):
+                results_map[futures[fut]] = fut.result()
+                completed += 1
+                _update_task(task_id, progress=20 + int(completed / total * 75))
 
-        results = await asyncio.gather(*[_bounded(p) for p in all_products])
-        results = list(results)
-
+        results = [results_map[i] for i in range(total)]
         success_count = sum(1 for r in results if "error" not in r)
         _update_task(task_id, status="success", progress=100, output_data={
             "shop_id": shop_id,
