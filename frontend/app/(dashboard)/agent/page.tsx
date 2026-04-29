@@ -144,7 +144,7 @@ function ProductPickerModal({ onConfirm, onClose, title = "选择要生成文案
   useEffect(() => {
     shopApi.list().then(r => {
       setShops(r.data || [])
-      if (!defaultShopId && r.data?.[0]) setShopId(r.data[0].id)
+      if (defaultShopId) setShopId(defaultShopId)
     })
   }, [defaultShopId])
 
