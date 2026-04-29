@@ -175,6 +175,11 @@ def job_xhs():
     _run("xhs_spider.py", label="XHS")
 
 
+def job_instagram():
+    """Instagram 刺绣标签爬取"""
+    _run("instagram_spider.py", label="Instagram")
+
+
 # ── 调度器初始化 ───────────────────────────────────────────────────────────────
 
 _scheduler: BackgroundScheduler | None = None
@@ -201,6 +206,9 @@ def start_scheduler():
 
     # XHS：每天 08:00（小红书刺绣商品）
     _scheduler.add_job(job_xhs, CronTrigger(hour=8, minute=0), id="xhs", name="XHS每日爬取", replace_existing=True)
+
+    # Instagram：每天 09:00（刺绣标签热帖）
+    _scheduler.add_job(job_instagram, CronTrigger(hour=9, minute=0), id="instagram", name="Instagram每日爬取", replace_existing=True)
 
     _scheduler.start()
     logger.info("✅ 定时爬虫调度器已启动")
