@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
@@ -56,10 +56,8 @@ function formatDate(iso: string | null): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-export default function ShopifyAIPage() {
+function ShopifyAIPageInner({ urlShopId }: { urlShopId: number | null }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const urlShopId = Number(searchParams.get("shop_id")) || null
   const [shops, setShops] = useState<Shop[]>([])
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
 
@@ -938,5 +936,19 @@ export default function ShopifyAIPage() {
 
       </main>
     </div>
+  )
+}
+
+function SearchParamsWrapper() {
+  const searchParams = useSearchParams()
+  const urlShopId = Number(searchParams.get("shop_id")) || null
+  return <ShopifyAIPageInner urlShopId={urlShopId} />
+}
+
+export default function ShopifyAIPage() {
+  return (
+    <Suspense fallback={null}>
+      <SearchParamsWrapper />
+    </Suspense>
   )
 }
