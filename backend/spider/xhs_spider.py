@@ -234,6 +234,18 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
     page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
     time.sleep(3)
 
+    # 等待 feeds-page 出现，再触发懒加载
+    try:
+        page.wait_for_selector(".feeds-page", timeout=15000)
+        # 滚动几次触发懒加载内容渲染
+        for _ in range(3):
+            page.evaluate("window.scrollBy(0, 600)")
+            time.sleep(1)
+        page.evaluate("window.scrollTo(0, 0)")
+        time.sleep(2)
+    except Exception:
+        pass
+
     # 尝试多个选择器（XHS 前端版本迭代后 class 可能变化）
     NOTE_SELECTORS = [
         "section.note-item",
@@ -241,6 +253,9 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
         ".feeds-page .note-item",
         "[class*='note-item']",
         ".search-container .note-item",
+        ".feeds-page section",
+        ".feeds-page a[href*='/explore/']",
+        ".feeds-page > div",
     ]
     found_selector = None
     for sel in NOTE_SELECTORS:
