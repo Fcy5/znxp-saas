@@ -559,6 +559,7 @@ export default function AgentPage() {
   const [showWizard, setShowWizard] = useState(false)
   const [launching, setLaunching] = useState<string | null>(null)
   const [videoModel, setVideoModel] = useState(VIDEO_MODELS[0].value)
+  const [shops, setShops] = useState<Shop[]>([])
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadTasks = async () => {
@@ -568,7 +569,10 @@ export default function AgentPage() {
     } catch { } finally { setLoadingTasks(false) }
   }
 
-  useEffect(() => { loadTasks() }, [])
+  useEffect(() => {
+    loadTasks()
+    shopApi.list().then(r => setShops(r.data || []))
+  }, [])
 
   useEffect(() => {
     const hasActive = tasks.some(t => t.status === "pending" || t.status === "running")
@@ -762,6 +766,29 @@ export default function AgentPage() {
                 ))
               )}
             </div>
+
+            {shops.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs">Shopify AI 优化</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-1.5">
+                  {shops.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => router.push(`/shopify-ai?shop_id=${s.id}`)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
+                    >
+                      <div>
+                        <p className="text-xs font-medium text-foreground">{s.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{s.domain}</p>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>

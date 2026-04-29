@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -58,6 +58,8 @@ function formatDate(iso: string | null): string {
 
 export default function ShopifyAIPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlShopId = Number(searchParams.get("shop_id")) || null
   const [shops, setShops] = useState<Shop[]>([])
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
 
@@ -108,7 +110,8 @@ export default function ShopifyAIPage() {
     if (!token) { router.push("/login"); return }
     shopApi.list().then(r => {
       setShops(r.data || [])
-      if (r.data?.length) setSelectedShopId(r.data[0].id)
+      if (urlShopId && r.data?.some(s => s.id === urlShopId)) setSelectedShopId(urlShopId)
+      else if (r.data?.length) setSelectedShopId(r.data[0].id)
     })
   }, [router])
 
