@@ -254,8 +254,22 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
 
     if not found_selector:
         title = page.title()
-        body_len = len(page.content())
+        content = page.content()
+        body_len = len(content)
+        # 诊断：输出页面中所有 class 包含 note/card/feed/item 的元素数量
+        diag = page.evaluate("""() => {
+            const all = document.querySelectorAll('*');
+            const hits = {};
+            all.forEach(el => {
+                (el.className || '').toString().split(' ').forEach(c => {
+                    if (c && (c.includes('note') || c.includes('card') || c.includes('feed') || c.includes('item')))
+                        hits[c] = (hits[c] || 0) + 1;
+                });
+            });
+            return hits;
+        }""")
         logger.warning(f"【{keyword}】所有选择器均未找到。页面标题='{title}' 内容长度={body_len}")
+        logger.warning(f"【{keyword}】页面元素诊断(note/card/feed/item类名): {dict(list(diag.items())[:20])}")
         page.unroute("**/*xhscdn.com/**", _route_handler)
         return []
 
