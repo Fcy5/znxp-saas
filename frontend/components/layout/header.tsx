@@ -5,45 +5,53 @@ import { Search, Bell, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalSearch } from "./global-search"
 
-export function Header({ title }: { title: string }) {
+export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const router = useRouter()
 
   return (
     <>
       <header
-        className="h-16 border-b flex items-center justify-between px-6 shrink-0 sticky top-0 z-10"
+        className="h-[72px] border-b flex items-center justify-between px-6 shrink-0 sticky top-0 z-10"
         style={{
-          background: "hsl(222 47% 9% / 0.85)",
+          background: "linear-gradient(180deg, hsl(222 47% 9% / 0.94), hsl(222 47% 8% / 0.84))",
           borderColor: "var(--color-border)",
-          backdropFilter: "blur(12px)",
+          backdropFilter: "blur(18px)",
         }}
       >
-        <h1 className="text-lg font-semibold text-white">{title}</h1>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-white/8 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-400">
+              Workspace
+            </span>
+          </div>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-white">{title}</h1>
+          {subtitle && <p className="text-xs text-slate-400 mt-1 truncate">{subtitle}</p>}
+        </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSearchOpen(true)}
-            className="relative hidden md:flex items-center gap-2 w-56 h-8 px-3 rounded-lg border border-border bg-transparent text-xs text-slate-500 hover:border-slate-500 transition-colors"
+            className="relative hidden md:flex items-center gap-2 w-64 h-10 px-4 rounded-xl border border-white/8 bg-white/[0.04] text-xs text-slate-500 hover:border-slate-500 transition-colors"
           >
             <Search className="w-3.5 h-3.5 shrink-0" />
             搜索商品、店铺...
           </button>
           <button
-            onClick={() => router.push("/agent")}
-            className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors"
+            onClick={() => router.push("/operations/agent")}
+            className="flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 rounded-xl hover:bg-emerald-500/20 transition-colors"
           >
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
             Agent 运行中
           </button>
           <button
-            onClick={() => router.push("/agent")}
-            className="relative p-2 rounded-lg hover:bg-[var(--color-accent)] transition-colors"
+            onClick={() => router.push("/operations/agent")}
+            className="relative p-2.5 rounded-xl border border-white/6 bg-white/[0.03] hover:bg-[var(--color-accent)] transition-colors"
             title="查看任务通知"
           >
             <Bell className="w-4 h-4 text-slate-400" />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />
           </button>
-          <Button size="sm" className="gap-1.5" onClick={() => router.push("/agent")}>
+          <Button size="sm" className="gap-1.5" onClick={() => router.push("/operations/agent")}>
             <Plus className="w-3.5 h-3.5" />
             新建任务
           </Button>

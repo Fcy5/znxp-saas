@@ -11,8 +11,8 @@ import type { AgentTask } from "@/lib/api"
 const taskMeta: Record<string, { label: string; icon: string }> = {
   store_profile:     { label: "店铺智能诊脉",      icon: "🔍" },
   auto_discovery:    { label: "零提示词自动推品",   icon: "🎯" },
-  batch_copywriting: { label: "SEO & GEO 批量文案", icon: "✍️" },
-  copywriting:       { label: "SEO & GEO 文案重构", icon: "✍️" },
+  batch_copywriting: { label: "商品标题及详情批量优化", icon: "✍️" },
+  copywriting:       { label: "商品标题及详情重构", icon: "✍️" },
   image_processing:  { label: "图片深度处理",      icon: "🖼️" },
   video_generation:  { label: "AI 视频生成",       icon: "🎬" },
   publish:           { label: "上架到 Shopify",    icon: "🚀" },
@@ -132,12 +132,12 @@ export function AgentTaskCard({
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium text-foreground truncate flex-1">{String(p.title)}</p>
                     {!p.error && (
-                      <Link href={`/products/${p.product_id}`} className="shrink-0 text-primary hover:text-primary/80">
+                      <Link href={`/selection/products/${p.product_id}`} className="shrink-0 text-primary hover:text-primary/80">
                         <ExternalLink className="w-3.5 h-3.5" />
                       </Link>
                     )}
                   </div>
-                  {!!p.seo_title && <p className="text-muted-foreground truncate">SEO: {String(p.seo_title)}</p>}
+                  {!!p.seo_title && <p className="text-muted-foreground truncate">商品标题: {String(p.seo_title)}</p>}
                   {!!p.error && <p className="text-red-400 text-[10px]">{String(p.error)}</p>}
                 </div>
               ))}
@@ -152,7 +152,7 @@ export function AgentTaskCard({
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>已加入选品库</span>
                   <Link
-                    href={task.shop_id ? `/library?shop_id=${task.shop_id}` : "/library"}
+                    href={task.shop_id ? `/selection/library?shop_id=${task.shop_id}` : "/selection/library"}
                     className="text-primary hover:text-primary/80 font-medium flex items-center gap-1"
                   >
                     查看 <ExternalLink className="w-3 h-3" />

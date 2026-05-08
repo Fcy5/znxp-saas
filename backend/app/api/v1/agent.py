@@ -57,6 +57,16 @@ def _task_resp(task: AgentTask) -> AgentTaskResponse:
     )
 
 
+def _normalize_media_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    if url.startswith("/static/"):
+        return f"{settings.static_base_url.rstrip('/')}{url}"
+    if url.startswith(("http://", "https://")):
+        return url
+    return None
+
+
 # ── store_profile ─────────────────────────────────────────────────────────────
 
 @router.post("/store-profile", response_model=Response[AgentTaskResponse])
@@ -274,7 +284,7 @@ async def image_generate(body: ImageGenerateRequest, current_user_id: CurrentUse
         filename = f"{uuid.uuid4().hex}.png"
         filepath = os.path.join(upload_dir, filename)
 
-        ref_url = body.reference_image_url if (body.reference_image_url and body.reference_image_url.startswith("http")) else None
+        ref_url = _normalize_media_url(body.reference_image_url)
 
         if ref_url:
             # 图生图：下载参考图后调用 images.edit（原生图生图）
@@ -472,13 +482,18 @@ async def video_from_url(
             raise HTTPException(status_code=503, detail="DASHSCOPE_API_KEY 未配置")
 
     task = await _create_task(db, current_user_id, "video_generation",
-                              input_data={"image_url": body.image_url, "title": body.title, "model": body.model})
+                              input_data={
+                                  "image_url": body.image_url,
+                                  "title": body.title,
+                                  "model": body.model,
+                                  "prompt": body.prompt,
+                              })
     await db.commit()
 
     from app.services.agent_tasks import run_video_from_url
     background_tasks.add_task(
         run_video_from_url,
-        task.id, body.image_url, body.title, body.product_type, body.duration, body.model,
+        task.id, body.image_url, body.title, body.product_type, body.duration, body.model, body.prompt,
     )
     return Response(data=_task_resp(task), message="视频生成已启动，约 60-120 秒完成")
 

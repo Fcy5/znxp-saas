@@ -56,6 +56,14 @@ def _ai_client():
                   timeout=httpx.Timeout(connect=10, read=60, write=10, pool=5))
 
 
+def _normalize_media_url(url: str | None) -> str:
+    if not url:
+        return ""
+    if url.startswith("/static/"):
+        return f"{settings.static_base_url.rstrip('/')}{url}"
+    return url
+
+
 # ── store_profile ─────────────────────────────────────────────────────────────
 
 def _fetch_store_content(shop_url: str) -> dict:
@@ -797,7 +805,8 @@ def _run_seedance_video(task_id: int, image_url: str, prompt: str,
     endpoint = "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks"
 
     content = []
-    if image_url and image_url.startswith("https://"):
+    image_url = _normalize_media_url(image_url)
+    if image_url and image_url.startswith(("http://", "https://")):
         content.append({"type": "image_url", "image_url": {"url": image_url}})
     content.append({"type": "text", "text": prompt[:500]})
 
@@ -1003,7 +1012,7 @@ def run_video_generation(task_id: int, product_id: int, user_id: int,
             return
 
         title = product["title"] or "product"
-        image_url = product["main_image"] or ""
+        image_url = _normalize_media_url(product["main_image"] or "")
         category = product["category"] or ""
 
         prompt = (
@@ -1027,7 +1036,7 @@ def run_video_generation(task_id: int, product_id: int, user_id: int,
         endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis"
 
         # 图生视频 or 文生视频
-        if image_url.startswith("https://"):
+        if image_url.startswith(("http://", "https://")):
             payload = {
                 "model": "wan2.7-i2v",
                 "input": {
@@ -1112,7 +1121,8 @@ def run_video_generation(task_id: int, product_id: int, user_id: int,
 
 def run_video_from_url(task_id: int, image_url: str, title: str,
                        product_type: str = "", duration: int = 5,
-                       model: str = "doubao-seedance-2-0-260128"):
+                       model: str = "doubao-seedance-2-0-260128",
+                       prompt: str | None = None):
     """图生视频：直接传入图片URL，无需 product_id（Shopify 商品用）"""
     import time, os, uuid
 
@@ -1128,10 +1138,15 @@ def run_video_from_url(task_id: int, image_url: str, title: str,
     try:
         _update_task(task_id, status="running", progress=10)
 
+        image_url = _normalize_media_url(image_url)
         prompt = (
-            f"E-commerce product showcase. Product: {title}. Type: {product_type}. "
-            "Smooth camera movement, bright studio lighting, commercial photography style, "
-            "clean white background, no text overlay, professional quality."
+            prompt.strip()
+            if prompt and prompt.strip()
+            else (
+                f"E-commerce product showcase. Product: {title}. Type: {product_type}. "
+                "Smooth camera movement, bright studio lighting, commercial photography style, "
+                "clean white background, no text overlay, professional quality."
+            )
         )
 
         if use_seedance:
@@ -1146,7 +1161,7 @@ def run_video_from_url(task_id: int, image_url: str, title: str,
         ds_kwargs = {"timeout": 30, "trust_env": False}
         endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis"
 
-        if image_url.startswith("https://"):
+        if image_url.startswith(("http://", "https://")):
             payload = {
                 "model": "wan2.7-i2v",
                 "input": {

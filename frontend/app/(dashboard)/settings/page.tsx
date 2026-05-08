@@ -18,7 +18,7 @@ const plans = [
   },
   {
     name: "Starter", price: "$29", current: true,
-    features: ["50 次/月 AI 推品", "全维度筛选", "3 个店铺", "SEO 文案生成", "图片基础处理"],
+    features: ["50 次/月 AI 推品", "全维度筛选", "3 个店铺", "商品标题及详情生成", "图片基础处理"],
   },
   {
     name: "Pro", price: "$79", current: false,

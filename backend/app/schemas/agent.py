@@ -90,6 +90,7 @@ class VideoFromUrlRequest(BaseModel):
     product_type: str = ""
     duration: int = 5
     model: str = "doubao-seedance-2-0-260128"
+    prompt: str | None = None
 
 
 class PublishRequest(BaseModel):

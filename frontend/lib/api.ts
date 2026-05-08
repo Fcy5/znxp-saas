@@ -567,10 +567,17 @@ export const agentApi = {
       body: JSON.stringify({ product_id, duration, resolution, model }),
     }),
 
-  videoFromUrl: (image_url: string, title: string, product_type = "", duration = 5, model = "doubao-seedance-2-0-260128") =>
+  videoFromUrl: (
+    image_url: string,
+    title: string,
+    product_type = "",
+    duration = 5,
+    model = "doubao-seedance-2-0-260128",
+    prompt?: string
+  ) =>
     request<ApiResponse<AgentTask>>("/agent/video-from-url", {
       method: "POST",
-      body: JSON.stringify({ image_url, title, product_type, duration, model }),
+      body: JSON.stringify({ image_url, title, product_type, duration, model, prompt }),
     }),
 
   pollTask: (task_id: number) =>

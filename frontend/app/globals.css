@@ -32,7 +32,11 @@
     box-sizing: border-box;
   }
   body {
-    background-color: var(--color-background);
+    background:
+      radial-gradient(circle at top left, hsl(194 89% 55% / 0.08), transparent 26%),
+      radial-gradient(circle at top right, hsl(282 85% 65% / 0.07), transparent 22%),
+      radial-gradient(circle at bottom center, hsl(42 94% 63% / 0.05), transparent 28%),
+      var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -69,5 +73,23 @@
   .glass {
     background-color: hsl(222 47% 9% / 0.8);
     backdrop-filter: blur(12px);
+  }
+  .panel-soft {
+    background:
+      linear-gradient(180deg, hsl(222 47% 10% / 0.96), hsl(222 47% 8% / 0.94));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.04),
+      0 24px 60px hsl(222 47% 2% / 0.24);
+  }
+  .ambient-grid {
+    background-image:
+      linear-gradient(hsl(0 0% 100% / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(0 0% 100% / 0.03) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .hero-glow {
+    box-shadow:
+      0 0 0 1px hsl(0 0% 100% / 0.04),
+      0 28px 80px hsl(221 83% 53% / 0.16);
   }
 }
