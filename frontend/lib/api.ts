@@ -203,6 +203,14 @@ export interface SelectionMeta {
   }
 }
 
+export interface BatchSaveOptions {
+  weekly_campaign?: string
+  season_tags?: string[]
+  holiday_tags?: string[]
+  audience_tags?: string[]
+  scenario_tags?: string[]
+}
+
 export interface ProductCard {
   id: number
   title: string
@@ -303,8 +311,11 @@ export const productApi = {
   getDetail: (id: number) =>
     request<ApiResponse<ProductDetail>>(`/products/${id}`),
 
-  save: (id: number) =>
-    request<ApiResponse<null>>(`/products/${id}/save`, { method: "POST" }),
+  save: (id: number, defaults?: BatchSaveOptions) =>
+    request<ApiResponse<null>>(`/products/${id}/save`, {
+      method: "POST",
+      body: JSON.stringify({ defaults }),
+    }),
 
   unsave: (id: number) =>
     request<ApiResponse<null>>(`/products/${id}/save`, { method: "DELETE" }),
@@ -312,10 +323,10 @@ export const productApi = {
   myLibrary: (page = 1, page_size = 20, keyword?: string, shop_id?: number, current_cycle_only = false) =>
     request<PagedResponse<LibraryProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${shop_id ? `&shop_id=${shop_id}` : ""}${current_cycle_only ? "&current_cycle_only=true" : ""}`),
 
-  batchSave: (product_ids: number[]) =>
+  batchSave: (product_ids: number[], defaults?: BatchSaveOptions) =>
     request<ApiResponse<null>>("/products/batch-save", {
       method: "POST",
-      body: JSON.stringify({ product_ids }),
+      body: JSON.stringify({ product_ids, defaults }),
     }),
 
   batchUpdateSelection: (body: SelectionBatchUpdateRequest) =>

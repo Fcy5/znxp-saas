@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Search, Sparkles, Filter, Loader2, ChevronLeft, ChevronRight, CheckSquare, Square, Plus, X } from "lucide-react"
-import { productApi, type ProductCard as ProductCardType } from "@/lib/api"
+import { productApi, type BatchSaveOptions, type ProductCard as ProductCardType } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 
 const categories = ["全部", "Apparel", "Accessories", "Gifts", "Home Decor", "Baby", "Kitchen", "Wedding", "Stationery", "Other"]
@@ -25,6 +25,7 @@ const sortOptions = [
   { label: "TikTok 热度", value: "tiktok_views" },
   { label: "利润率", value: "profit_margin_estimate" },
 ]
+const CAMPAIGNS = ["Memorial Day", "Father's Day", "Graduation", "Summer"]
 
 function ProductsContent() {
   const router = useRouter()
@@ -47,8 +48,15 @@ function ProductsContent() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [batchSaving, setBatchSaving] = useState(false)
   const [batchMsg, setBatchMsg] = useState("")
+  const [showBatchDialog, setShowBatchDialog] = useState(false)
+  const [batchDefaults, setBatchDefaults] = useState<BatchSaveOptions>({
+    weekly_campaign: "",
+    audience_tags: [],
+    scenario_tags: [],
+  })
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollKey = "products_scroll"
+  const parseTags = (raw: string) => raw.split(",").map(v => v.trim()).filter(Boolean)
 
   // 更新 URL，不产生新历史记录
   const updateUrl = useCallback((updates: Record<string, string | null>) => {
@@ -138,11 +146,24 @@ function ProductsContent() {
 
   const handleBatchSave = async () => {
     if (selectedIds.size === 0) return
+    if (!batchDefaults.weekly_campaign) {
+      setBatchMsg("请先选择一个本周专题池")
+      return
+    }
+    if (!(batchDefaults.audience_tags || []).length) {
+      setBatchMsg("请至少填写一个人群标签")
+      return
+    }
+    if (!(batchDefaults.scenario_tags || []).length) {
+      setBatchMsg("请至少填写一个场景标签")
+      return
+    }
     setBatchSaving(true); setBatchMsg("")
     try {
-      const res = await productApi.batchSave([...selectedIds])
+      const res = await productApi.batchSave([...selectedIds], batchDefaults)
       setBatchMsg(res.message || "批量保存成功")
       clearSelect()
+      setShowBatchDialog(false)
       setTimeout(() => setBatchMsg(""), 3000)
     } catch (e: unknown) {
       setBatchMsg(e instanceof Error ? e.message : "保存失败")
@@ -163,7 +184,7 @@ function ProductsContent() {
           <button onClick={selectAll} className="text-xs text-muted-foreground hover:text-foreground transition-colors">全选本页</button>
           <button onClick={clearSelect} className="text-xs text-muted-foreground hover:text-foreground transition-colors">清空</button>
           <div className="w-px h-4 bg-border" />
-          <Button size="sm" onClick={handleBatchSave} disabled={batchSaving || selectedIds.size === 0} className="gap-1.5">
+          <Button size="sm" onClick={() => setShowBatchDialog(true)} disabled={batchSaving || selectedIds.size === 0} className="gap-1.5">
             {batchSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             批量加入选品库
           </Button>
@@ -171,6 +192,54 @@ function ProductsContent() {
           <button onClick={() => { setBatchMode(false); clearSelect() }} className="text-muted-foreground hover:text-foreground">
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {showBatchDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowBatchDialog(false)}>
+          <Card className="w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="text-sm">批量加入选品库</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">已选择 {selectedIds.size} 件商品。入库前需要统一补齐专题池、人群标签和场景标签。</p>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">本周专题池</label>
+                <select
+                  value={batchDefaults.weekly_campaign || ""}
+                  onChange={e => setBatchDefaults(prev => ({ ...prev, weekly_campaign: e.target.value }))}
+                  className="w-full h-9 rounded-lg border border-border bg-secondary px-3 text-sm"
+                >
+                  <option value="">请选择</option>
+                  {CAMPAIGNS.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">人群标签</label>
+                <Input
+                  value={(batchDefaults.audience_tags || []).join(", ")}
+                  onChange={e => setBatchDefaults(prev => ({ ...prev, audience_tags: parseTags(e.target.value) }))}
+                  placeholder="dad, graduate, family"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">场景标签</label>
+                <Input
+                  value={(batchDefaults.scenario_tags || []).join(", ")}
+                  onChange={e => setBatchDefaults(prev => ({ ...prev, scenario_tags: parseTags(e.target.value) }))}
+                  placeholder="gift, bbq, travel"
+                />
+              </div>
+              {batchMsg && <p className="text-xs text-destructive">{batchMsg}</p>}
+              <div className="flex gap-3 pt-2">
+                <Button className="flex-1 gap-1.5" onClick={handleBatchSave} disabled={batchSaving}>
+                  {batchSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  确认入库
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => setShowBatchDialog(false)}>取消</Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

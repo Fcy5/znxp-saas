@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatNumber } from "@/lib/utils"
 import { TrendingUp, Star, Play, BarChart2, Plus, Bot, ExternalLink, Rocket, Loader2, AlertCircle, CheckCircle2, Check } from "lucide-react"
 import Link from "next/link"
-import { shopApi, publishApi, productApi, type Shop } from "@/lib/api"
+import { shopApi, publishApi, productApi, type BatchSaveOptions, type Shop } from "@/lib/api"
 
 interface Product {
   id: number
@@ -35,6 +35,8 @@ const platformColors: Record<string, string> = {
   facebook: "default",
 }
 
+const CAMPAIGNS = ["Memorial Day", "Father's Day", "Graduation", "Summer"]
+
 export function ProductCard({
   product,
   selectable = false,
@@ -56,16 +58,43 @@ export function ProductCard({
   const [publishResult, setPublishResult] = useState<{ url?: string; error?: string } | null>(null)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [saveError, setSaveError] = useState("")
+  const [saveDefaults, setSaveDefaults] = useState<BatchSaveOptions>({
+    weekly_campaign: "",
+    audience_tags: [],
+    scenario_tags: [],
+  })
+
+  const parseTags = (raw: string) => raw.split(",").map(v => v.trim()).filter(Boolean)
 
   const handleSave = async () => {
     if (saved || saving) return
+    setShowSaveDialog(true)
+    setSaveError("")
+  }
+
+  const confirmSave = async () => {
+    if (saved || saving) return
+    if (!saveDefaults.weekly_campaign) {
+      setSaveError("请先选择一个本周专题池")
+      return
+    }
+    if (!(saveDefaults.audience_tags || []).length) {
+      setSaveError("请至少填写一个人群标签")
+      return
+    }
+    if (!(saveDefaults.scenario_tags || []).length) {
+      setSaveError("请至少填写一个场景标签")
+      return
+    }
     setSaving(true)
     try {
-      await productApi.save(product.id)
+      await productApi.save(product.id, saveDefaults)
       setSaved(true)
-    } catch {
-      // already saved or error - show saved anyway
-      setSaved(true)
+      setShowSaveDialog(false)
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "保存失败")
     } finally {
       setSaving(false)
     }
@@ -319,6 +348,58 @@ export function ProductCard({
                   </div>
                 </form>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {showSaveDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowSaveDialog(false)}>
+          <Card className="w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Plus className="w-4 h-4 text-primary" />
+                加入选品库
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">本周专题池</label>
+                <select
+                  value={saveDefaults.weekly_campaign || ""}
+                  onChange={e => setSaveDefaults(prev => ({ ...prev, weekly_campaign: e.target.value }))}
+                  className="w-full h-9 rounded-lg border border-border bg-secondary px-3 text-sm"
+                >
+                  <option value="">请选择</option>
+                  {CAMPAIGNS.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">人群标签</label>
+                <Input
+                  value={(saveDefaults.audience_tags || []).join(", ")}
+                  onChange={e => setSaveDefaults(prev => ({ ...prev, audience_tags: parseTags(e.target.value) }))}
+                  placeholder="dad, graduate, family"
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">场景标签</label>
+                <Input
+                  value={(saveDefaults.scenario_tags || []).join(", ")}
+                  onChange={e => setSaveDefaults(prev => ({ ...prev, scenario_tags: parseTags(e.target.value) }))}
+                  placeholder="gift, bbq, travel"
+                  className="text-xs"
+                />
+              </div>
+              {saveError && <p className="text-xs text-destructive">{saveError}</p>}
+              <div className="flex gap-3 pt-2">
+                <Button type="button" className="flex-1 gap-1.5" onClick={confirmSave} disabled={saving}>
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  确认入库
+                </Button>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowSaveDialog(false)}>取消</Button>
+              </div>
             </CardContent>
           </Card>
         </div>
