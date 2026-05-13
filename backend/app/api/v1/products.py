@@ -3,7 +3,15 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import CurrentUser, DBSession
 from app.models.product import Product, UserProduct
-from app.schemas.product import ProductCard, ProductDetail, ProductFilterRequest, ProductRecommendation
+from app.schemas.product import (
+    ProductCard,
+    ProductDetail,
+    ProductFilterRequest,
+    ProductRecommendation,
+    LibraryProductCard,
+    SelectionMeta,
+    SelectionMetaUpdateRequest,
+)
 from app.schemas.common import Response, PagedResponse, PageInfo
 import math
 import random
@@ -12,6 +20,32 @@ import time
 router = APIRouter(prefix="/products", tags=["Products"])
 
 ALLOWED_SORT = {"ai_score", "sales_trend", "tiktok_views", "profit_margin_estimate", "review_score", "review_count"}
+SELECTION_META_FIELDS = {
+    "season_tags",
+    "holiday_tags",
+    "audience_tags",
+    "scenario_tags",
+    "weekly_campaign",
+    "event_window",
+    "selection_status",
+    "selection_reason",
+    "selection_confidence",
+    "manual_review_flag",
+    "embroidery_position",
+    "customization_type",
+    "embroidery_visibility",
+    "giftability",
+    "personalization_complexity",
+    "content_hook",
+    "visual_impact",
+    "video_potential",
+    "ugc_potential",
+    "trend_score",
+    "embroidery_fit_score",
+    "gift_score",
+    "campaign_score",
+    "final_selection_score",
+}
 
 
 def _build_query(body: ProductFilterRequest):
@@ -36,6 +70,20 @@ def _build_query(body: ProductFilterRequest):
     if body.brand:
         q = q.where(Product.brand == body.brand)
     return q
+
+
+def _selection_meta_from_record(record: UserProduct | None) -> SelectionMeta | None:
+    if not record:
+        return None
+    data = {field: getattr(record, field) for field in SELECTION_META_FIELDS}
+    return SelectionMeta.model_validate(data)
+
+
+def _library_card(product: Product, record: UserProduct) -> LibraryProductCard:
+    return LibraryProductCard(
+        **ProductCard.model_validate(product).model_dump(),
+        **SelectionMeta.model_validate({field: getattr(record, field) for field in SELECTION_META_FIELDS}).model_dump(),
+    )
 
 
 import math as _math
@@ -310,7 +358,7 @@ async def search_products(body: ProductFilterRequest, db: DBSession):
     )
 
 
-@router.get("/library/list", response_model=PagedResponse[ProductCard])
+@router.get("/library/list", response_model=PagedResponse[LibraryProductCard])
 async def get_my_library(
     current_user_id: CurrentUser,
     db: DBSession,
@@ -320,7 +368,7 @@ async def get_my_library(
     shop_id: int | None = Query(None),
 ):
     q = (
-        select(Product)
+        select(Product, UserProduct)
         .join(UserProduct, UserProduct.product_id == Product.id)
         .where(UserProduct.user_id == current_user_id)
         .where(UserProduct.is_deleted == False)
@@ -335,10 +383,10 @@ async def get_my_library(
 
     data_q = q.order_by(Product.ai_score.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(data_q)
-    products = result.scalars().all()
+    rows = result.all()
 
     return PagedResponse(
-        data=[ProductCard.model_validate(p) for p in products],
+        data=[_library_card(product, record) for product, record in rows],
         page_info=PageInfo(page=page, page_size=page_size, total=total, total_pages=math.ceil(total / page_size) if page_size else 1),
     )
 
@@ -358,6 +406,7 @@ async def get_product_detail(product_id: int, db: DBSession, current_user_id: Cu
     )).scalar_one_or_none()
     detail = ProductDetail.model_validate(product)
     detail.is_saved = bool(saved)
+    detail.selection_meta = _selection_meta_from_record(saved)
     return Response(data=detail)
 
 
@@ -378,7 +427,12 @@ async def save_product(product_id: int, current_user_id: CurrentUser, db: DBSess
     if existing.scalar_one_or_none():
         return Response(message="Already in your library")
 
-    db.add(UserProduct(user_id=current_user_id, product_id=product_id, status="saved"))
+    db.add(UserProduct(
+        user_id=current_user_id,
+        product_id=product_id,
+        status="saved",
+        selection_status="candidate",
+    ))
     await db.commit()
     return Response(message="Product saved to your library")
 
@@ -409,11 +463,41 @@ async def batch_save_products(
     added = 0
     for pid in product_ids:
         if pid not in already_saved:
-            db.add(UserProduct(user_id=current_user_id, product_id=pid, status="saved"))
+            db.add(UserProduct(
+                user_id=current_user_id,
+                product_id=pid,
+                status="saved",
+                selection_status="candidate",
+            ))
             added += 1
 
     await db.commit()
     return Response(message=f"成功加入 {added} 件，跳过 {len(product_ids) - added} 件（已在库中）")
+
+
+@router.patch("/{product_id}/selection-meta", response_model=Response[SelectionMeta])
+async def update_selection_meta(
+    product_id: int,
+    body: SelectionMetaUpdateRequest,
+    current_user_id: CurrentUser,
+    db: DBSession,
+):
+    record = (await db.execute(
+        select(UserProduct).where(
+            UserProduct.user_id == current_user_id,
+            UserProduct.product_id == product_id,
+            UserProduct.is_deleted == False,
+        )
+    )).scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="Product not found in your library")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(record, field, value)
+
+    await db.commit()
+    await db.refresh(record)
+    return Response(data=_selection_meta_from_record(record))
 
 
 @router.delete("/{product_id}/save", response_model=Response[None])

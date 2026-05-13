@@ -42,7 +42,7 @@ export default function LoginPage() {
           localStorage.removeItem(SAVED_EMAIL_KEY)
           localStorage.removeItem(SAVED_PWD_KEY)
         }
-        router.push("/dashboard")
+        router.push("/control-center")
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "登录失败，请检查邮箱和密码")

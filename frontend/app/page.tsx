@@ -116,7 +116,7 @@ export default function HomePage() {
           {username ? (
             <>
               <span className="text-sm text-muted-foreground hidden md:block">{username}</span>
-              <Link href="/dashboard">
+              <Link href="/control-center">
                 <Button size="sm" className="gap-1.5">
                   <LayoutDashboard className="w-3.5 h-3.5" />
                   进入后台

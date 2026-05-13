@@ -357,7 +357,7 @@ function WorkflowWizard({ onClose, onTaskCreated }: {
     try {
       await agentApi.confirmDiscovery(Array.from(selected), shop.id)
       onClose()
-      router.push(`/selection/library?shop_id=${shop.id}`)
+      router.push(`/library?shop_id=${shop.id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : "确认失败，请重试")
     } finally {
@@ -644,7 +644,7 @@ export default function AgentPage() {
 
   const handleCapabilityClick = (type: string, status: string) => {
     if ((status as string) === "wip") return
-    if (type === "publish" || type === "image_processing") { router.push("/selection/library"); return }
+    if (type === "publish" || type === "image_processing") { router.push("/library"); return }
     setModalType(type)
   }
 
@@ -821,7 +821,7 @@ export default function AgentPage() {
                     task={task}
                     onConfirmDiscovery={async (productIds, shopId) => {
                       await agentApi.confirmDiscovery(productIds, shopId)
-                      router.push(`/selection/library${shopId ? `?shop_id=${shopId}` : ""}`)
+                      router.push(`/library${shopId ? `?shop_id=${shopId}` : ""}`)
                     }}
                   />
                 ))

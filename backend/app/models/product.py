@@ -58,3 +58,33 @@ class UserProduct(BaseModel):
     shopify_product_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     custom_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Selection decision fields
+    season_tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    holiday_tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    audience_tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    scenario_tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    weekly_campaign: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    event_window: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    selection_status: Mapped[str] = mapped_column(String(50), default="candidate")
+    selection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    selection_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    manual_review_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Embroidery fit
+    embroidery_position: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    customization_type: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    embroidery_visibility: Mapped[float | None] = mapped_column(Float, nullable=True)
+    giftability: Mapped[float | None] = mapped_column(Float, nullable=True)
+    personalization_complexity: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Content and automated scoring
+    content_hook: Mapped[str | None] = mapped_column(Text, nullable=True)
+    visual_impact: Mapped[float | None] = mapped_column(Float, nullable=True)
+    video_potential: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ugc_potential: Mapped[float | None] = mapped_column(Float, nullable=True)
+    trend_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    embroidery_fit_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    gift_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    campaign_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    final_selection_score: Mapped[float | None] = mapped_column(Float, nullable=True)

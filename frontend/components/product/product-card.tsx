@@ -159,17 +159,19 @@ export function ProductCard({
 
           {/* TikTok play button */}
           {product.source_platform === "tiktok" && product.source_url && (
-            <a
-              href={product.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
+            <button
+              type="button"
+              onClick={e => {
+                e.preventDefault()
+                e.stopPropagation()
+                window.open(product.source_url, "_blank", "noopener,noreferrer")
+              }}
               className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur border border-white/40 flex items-center justify-center">
                 <Play className="w-5 h-5 text-white fill-white ml-0.5" />
               </div>
-            </a>
+            </button>
           )}
         </div>
         </Link>

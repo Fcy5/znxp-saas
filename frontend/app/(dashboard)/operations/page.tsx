@@ -8,8 +8,8 @@ const features = [
   { href: "/operations/agent", icon: HeartPulse, name: "店铺智能诊脉", desc: "AI 分析店铺定位、受众、转化问题和改版建议" },
   { href: "/operations/agent", icon: FileText, name: "社媒文案生成", desc: "批量生成商品标题及详情内容，以及 TikTok、Facebook、Instagram 文案" },
   { href: "/operations/agent", icon: Video, name: "社媒视频生成", desc: "基于商品主图生成短视频素材，适合社媒投放和运营发布" },
-  { href: "/operations/shops", icon: Store, name: "我的店铺", desc: "Shopify 店铺绑定、验证和店铺商品查看" },
-  { href: "/operations/published", icon: Rocket, name: "上架历史", desc: "已发布商品记录、状态和 Shopify 链接" },
+  { href: "/shops", icon: Store, name: "我的店铺", desc: "Shopify 店铺绑定、验证和店铺商品查看" },
+  { href: "/published", icon: Rocket, name: "上架历史", desc: "已发布商品记录、状态和 Shopify 链接" },
 ]
 
 export default function OperationsSystemPage() {

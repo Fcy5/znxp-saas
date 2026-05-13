@@ -43,6 +43,33 @@ export interface ProductRecommendation extends ProductCard {
   rec_reason: string
 }
 
+export interface SelectionMeta {
+  season_tags?: string[]
+  holiday_tags?: string[]
+  audience_tags?: string[]
+  scenario_tags?: string[]
+  weekly_campaign?: string
+  event_window?: string
+  selection_status?: string
+  selection_reason?: string
+  selection_confidence?: number
+  manual_review_flag?: boolean
+  embroidery_position?: string
+  customization_type?: string[]
+  embroidery_visibility?: number
+  giftability?: number
+  personalization_complexity?: number
+  content_hook?: string
+  visual_impact?: number
+  video_potential?: number
+  ugc_potential?: number
+  trend_score?: number
+  embroidery_fit_score?: number
+  gift_score?: number
+  campaign_score?: number
+  final_selection_score?: number
+}
+
 export interface ProductCard {
   id: number
   title: string
@@ -70,7 +97,10 @@ export interface ProductDetail extends ProductCard {
   pain_points?: string[]
   source_url?: string
   is_saved?: boolean
+  selection_meta?: SelectionMeta
 }
+
+export interface LibraryProductCard extends ProductCard, SelectionMeta {}
 
 export interface PageInfo {
   page: number
@@ -127,12 +157,18 @@ export const productApi = {
     request<ApiResponse<null>>(`/products/${id}/save`, { method: "DELETE" }),
 
   myLibrary: (page = 1, page_size = 20, keyword?: string, shop_id?: number) =>
-    request<PagedResponse<ProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${shop_id ? `&shop_id=${shop_id}` : ""}`),
+    request<PagedResponse<LibraryProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${shop_id ? `&shop_id=${shop_id}` : ""}`),
 
   batchSave: (product_ids: number[]) =>
     request<ApiResponse<null>>("/products/batch-save", {
       method: "POST",
       body: JSON.stringify({ product_ids }),
+    }),
+
+  updateSelectionMeta: (id: number, body: SelectionMeta) =>
+    request<ApiResponse<SelectionMeta>>(`/products/${id}/selection-meta`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
     }),
 }
 

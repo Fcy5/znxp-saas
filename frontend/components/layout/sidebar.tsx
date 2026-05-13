@@ -21,11 +21,11 @@ const systemNavItems = [
   {
     label: "选品系统",
     items: [
-      { href: "/selection/products", icon: ShoppingBag, label: "选品大厅", badge: "HOT" },
-      { href: "/selection/library", icon: Bookmark, label: "我的选品库" },
-      { href: "/selection/xiaohongshu", icon: Flower2, label: "小红书 / Instagram", badge: "NEW" },
-      { href: "/selection/facebook", icon: MonitorPlay, label: "FB 广告库" },
-      { href: "/selection/suppliers", icon: Truck, label: "供应商" },
+      { href: "/products", icon: ShoppingBag, label: "选品大厅", badge: "HOT" },
+      { href: "/library", icon: Bookmark, label: "我的选品库" },
+      { href: "/xiaohongshu", icon: Flower2, label: "小红书 / Instagram", badge: "NEW" },
+      { href: "/facebook", icon: MonitorPlay, label: "FB 广告库" },
+      { href: "/suppliers", icon: Truck, label: "供应商" },
     ],
   },
   {
@@ -37,14 +37,14 @@ const systemNavItems = [
   {
     label: "广告系统",
     items: [
-      { href: "/ads/gmc", icon: ShoppingCart, label: "Google 购物广告" },
+      { href: "/gmc", icon: ShoppingCart, label: "Google 购物广告" },
     ],
   },
   {
     label: "运营系统",
     items: [
-      { href: "/operations/shops", icon: Store, label: "我的店铺" },
-      { href: "/operations/published", icon: Rocket, label: "上架历史" },
+      { href: "/shops", icon: Store, label: "我的店铺" },
+      { href: "/published", icon: Rocket, label: "上架历史" },
     ],
   },
   {

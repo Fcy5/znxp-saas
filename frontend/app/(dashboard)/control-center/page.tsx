@@ -26,7 +26,7 @@ const platformColor: Record<string, "warning" | "info" | "danger" | "default"> =
 function EggRow({ rec, rank }: { rec: ProductRecommendation; rank: number }) {
   const rankIcon = ["🥇", "🥈", "🥉"][rank] ?? "✨"
   const isXhs = rec.source_platform === "xiaohongshu"
-  const href = isXhs ? "/selection/xiaohongshu" : `/selection/products/${rec.id}`
+  const href = isXhs ? "/xiaohongshu" : `/products/${rec.id}`
 
   return (
     <Link href={href}>
@@ -176,7 +176,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-bold text-foreground">系统总览</h2>
             <p className="text-muted-foreground text-sm mt-0.5">{today}</p>
           </div>
-          <Link href="/selection/products">
+          <Link href="/products">
             <Button className="gap-2">
               <Sparkles className="w-4 h-4" />
               进入选品大厅
@@ -317,7 +317,7 @@ export default function DashboardPage() {
                   <RefreshCw className={`w-3 h-3 ${recsLoading ? "animate-spin" : ""}`} />
                   换一批
                 </Button>
-                <Link href="/selection/products" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <Link href="/products" className="text-xs text-primary hover:underline flex items-center gap-1">
                   查看全部 <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>

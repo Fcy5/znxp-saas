@@ -20,6 +20,39 @@ class ProductCard(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SelectionMeta(BaseModel):
+    season_tags: list[str] | None = None
+    holiday_tags: list[str] | None = None
+    audience_tags: list[str] | None = None
+    scenario_tags: list[str] | None = None
+    weekly_campaign: str | None = None
+    event_window: str | None = None
+    selection_status: str | None = None
+    selection_reason: str | None = None
+    selection_confidence: float | None = None
+    manual_review_flag: bool = False
+    embroidery_position: str | None = None
+    customization_type: list[str] | None = None
+    embroidery_visibility: float | None = None
+    giftability: float | None = None
+    personalization_complexity: float | None = None
+    content_hook: str | None = None
+    visual_impact: float | None = None
+    video_potential: float | None = None
+    ugc_potential: float | None = None
+    trend_score: float | None = None
+    embroidery_fit_score: float | None = None
+    gift_score: float | None = None
+    campaign_score: float | None = None
+    final_selection_score: float | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class LibraryProductCard(ProductCard, SelectionMeta):
+    pass
+
+
 class ProductDetail(ProductCard):
     description: str | None
     images: list | None
@@ -35,6 +68,7 @@ class ProductDetail(ProductCard):
     meta_description: str | None = None
     alt_tags: list | None = None
     ai_description: str | None = None
+    selection_meta: SelectionMeta | None = None
 
 
 class ProductRecommendation(ProductCard):
@@ -56,3 +90,30 @@ class ProductFilterRequest(BaseModel):
     brand: str | None = None
     sort_by: str = "ai_score"   # ai_score / sales_trend / tiktok_views
     sort_order: str = "desc"
+
+
+class SelectionMetaUpdateRequest(BaseModel):
+    season_tags: list[str] | None = None
+    holiday_tags: list[str] | None = None
+    audience_tags: list[str] | None = None
+    scenario_tags: list[str] | None = None
+    weekly_campaign: str | None = None
+    event_window: str | None = None
+    selection_status: str | None = None
+    selection_reason: str | None = None
+    selection_confidence: float | None = None
+    manual_review_flag: bool | None = None
+    embroidery_position: str | None = None
+    customization_type: list[str] | None = None
+    embroidery_visibility: float | None = None
+    giftability: float | None = None
+    personalization_complexity: float | None = None
+    content_hook: str | None = None
+    visual_impact: float | None = None
+    video_potential: float | None = None
+    ugc_potential: float | None = None
+    trend_score: float | None = None
+    embroidery_fit_score: float | None = None
+    gift_score: float | None = None
+    campaign_score: float | None = None
+    final_selection_score: float | None = None

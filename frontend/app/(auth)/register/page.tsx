@@ -36,7 +36,7 @@ export default function RegisterPage() {
         localStorage.setItem("access_token", res.data.access_token)
         localStorage.setItem("user_id", String(res.data.user_id))
         localStorage.setItem("username", res.data.username)
-        router.push("/dashboard")
+        router.push("/control-center")
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "注册失败，请重试")

@@ -132,7 +132,7 @@ export function AgentTaskCard({
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium text-foreground truncate flex-1">{String(p.title)}</p>
                     {!p.error && (
-                      <Link href={`/selection/products/${p.product_id}`} className="shrink-0 text-primary hover:text-primary/80">
+                      <Link href={`/products/${p.product_id}`} className="shrink-0 text-primary hover:text-primary/80">
                         <ExternalLink className="w-3.5 h-3.5" />
                       </Link>
                     )}
@@ -152,7 +152,7 @@ export function AgentTaskCard({
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>已加入选品库</span>
                   <Link
-                    href={task.shop_id ? `/selection/library?shop_id=${task.shop_id}` : "/selection/library"}
+                    href={task.shop_id ? `/library?shop_id=${task.shop_id}` : "/library"}
                     className="text-primary hover:text-primary/80 font-medium flex items-center gap-1"
                   >
                     查看 <ExternalLink className="w-3 h-3" />
