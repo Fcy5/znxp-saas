@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>定制刺绣选品系统极致化本周计划</title>
+  <style>
+    :root {
+      --bg: #eef3f1;
+      --paper: #fcfffd;
+      --ink: #10211b;
+      --muted: #5c7068;
+      --line: #cddbd4;
+      --brand: #006c57;
+      --brand-soft: #e4f4ee;
+      --brand-deep: #004e40;
+      --warm: #f59e0b;
+      --warm-soft: #fff3d8;
+      --rose: #c2410c;
+      --slate: #eff5f3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top right, rgba(0, 108, 87, 0.08), transparent 24%),
+        linear-gradient(180deg, #f4f8f6 0%, var(--bg) 100%);
+      color: var(--ink);
+      font-family: "PingFang SC", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+    }
+
+    .sheet {
+      width: 980px;
+      margin: 28px auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 70px rgba(16, 33, 27, 0.08);
+    }
+
+    .page {
+      padding: 44px 54px 52px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .page:last-child {
+      border-bottom: 0;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(0, 108, 87, 0.95), rgba(0, 78, 64, 0.95)),
+        linear-gradient(180deg, #0b2b22, #0b2b22);
+      color: #f5fffb;
+      padding: 52px 54px 56px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -60px;
+      top: -60px;
+      width: 260px;
+      height: 260px;
+      border-radius: 32px;
+      transform: rotate(18deg);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.16);
+      font-size: 12px;
+      letter-spacing: 0;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 34px;
+      line-height: 1.15;
+      margin-top: 16px;
+      max-width: 660px;
+    }
+
+    .subtitle {
+      margin-top: 14px;
+      max-width: 700px;
+      color: rgba(245, 255, 251, 0.86);
+      font-size: 15px;
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 22px;
+    }
+
+    .meta-chip {
+      padding: 10px 12px;
+      min-width: 128px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .meta-chip strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 2px;
+      color: #ffffff;
+    }
+
+    .meta-chip span {
+      font-size: 12px;
+      color: rgba(255,255,255,0.74);
+    }
+
+    .section-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--brand);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 24px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 780px;
+    }
+
+    .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .mt-24 {
+      margin-top: 24px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px 18px 16px;
+    }
+
+    .card.soft {
+      background: var(--slate);
+    }
+
+    .card.brand {
+      background: linear-gradient(180deg, #f9fffc 0%, #edf7f3 100%);
+      border-color: #c6ddd5;
+    }
+
+    .card.warn {
+      background: linear-gradient(180deg, #fffef9 0%, #fff7e8 100%);
+      border-color: #ead9b0;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .score {
+      font-size: 28px;
+      line-height: 1;
+      color: var(--brand-deep);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .chip-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: var(--brand-soft);
+      color: var(--brand-deep);
+      border: 1px solid #c8e3da;
+    }
+
+    .chip.warm {
+      background: var(--warm-soft);
+      color: #885000;
+      border-color: #efd28e;
+    }
+
+    .checklist {
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .checklist li {
+      position: relative;
+      padding-left: 18px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .checklist li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand);
+    }
+
+    .question-grid .card {
+      min-height: 112px;
+    }
+
+    .question-num {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      background: var(--brand-soft);
+      color: var(--brand-deep);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .module-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .module-pill {
+      min-height: 86px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .module-pill strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: var(--brand-deep);
+    }
+
+    .module-pill span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .track-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .track-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: #fff;
+      min-height: 168px;
+    }
+
+    .track-card h3 {
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+
+    .track-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .track-card ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    .track-card li {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .dim-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .dim-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fcfa 100%);
+      min-height: 200px;
+    }
+
+    .dim-card h3 {
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+
+    .dim-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .dim-card ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    .dim-card li {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .status-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: #fff;
+    }
+
+    .status-card h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .status-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .status-card ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    .status-card li {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .score-table-wrap {
+      margin-top: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .score-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .score-table th,
+    .score-table td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      vertical-align: top;
+      padding: 14px 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: left;
+    }
+
+    .score-table th:last-child,
+    .score-table td:last-child {
+      border-right: 0;
+    }
+
+    .score-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .score-table th {
+      background: #f3faf7;
+      color: var(--brand-deep);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .score-table td strong {
+      color: var(--ink);
+    }
+
+    .layer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .layer-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: #fff;
+      min-height: 220px;
+    }
+
+    .layer-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--brand-soft);
+      color: var(--brand-deep);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .layer-card h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .layer-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .layer-card ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    .layer-card li {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .auto-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .auto-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #f6fbf9 100%);
+    }
+
+    .auto-card h3 {
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+
+    .auto-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .auto-card ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    .auto-card li {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .day {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 18px;
+      align-items: start;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .day:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .day-tag {
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f5fbf8 0%, #e7f4ee 100%);
+      border: 1px solid #c6ddd5;
+    }
+
+    .day-tag strong {
+      display: block;
+      font-size: 14px;
+      color: var(--brand-deep);
+      margin-bottom: 4px;
+    }
+
+    .day-tag span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .day-body h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .day-body p {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .mini-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .mini-box strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .mini-box ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    .mini-box li {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .flow-step {
+      padding: 12px 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--ink);
+      min-width: 112px;
+      text-align: center;
+    }
+
+    .footer-note {
+      margin-top: 22px;
+      padding: 16px 18px;
+      border-radius: 8px;
+      border: 1px solid #d7e6e0;
+      background: linear-gradient(180deg, #f7fcfa 0%, #edf7f2 100%);
+    }
+
+    .footer-note strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: var(--brand-deep);
+    }
+
+    .footer-note p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .sheet {
+        width: auto;
+        margin: 0;
+        box-shadow: none;
+        border: 0;
+      }
+
+      .page, .hero {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <section class="hero">
+      <span class="eyebrow">2026-05-12 至 2026-05-15</span>
+      <h1>定制刺绣选品系统极致化本周计划</h1>
+      <p class="subtitle">本周只看选品，不考虑上架、供应链、广告投放、运营。目标是把现有系统从商品池和收藏页，整改成专门服务定制刺绣爆款筛选的选品系统。</p>
+      <div class="meta-row">
+        <div class="meta-chip">
+          <strong>60</strong>
+          <span>候选款目标</span>
+        </div>
+        <div class="meta-chip">
+          <strong>20</strong>
+          <span>重点款目标</span>
+        </div>
+        <div class="meta-chip">
+          <strong>8</strong>
+          <span>主推款目标</span>
+        </div>
+        <div class="meta-chip">
+          <strong>4</strong>
+          <span>本周专题池</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">Current State</div>
+      <h2>目前已经实现的能力，以及接下来要补的部分</h2>
+      <p class="lead">先把现状讲清楚。这套计划基于现有选品系统继续深化，目标是逐步推进为“定制刺绣自动化选品系统”。</p>
+
+      <div class="status-grid">
+        <div class="status-card">
+          <h3>目前已经实现</h3>
+          <p>现有系统已经具备一条基础选品链路，说明底层能力已经具备，可在此基础上继续深化。</p>
+          <ul>
+            <li>`/products` 多平台商品池，支持搜索、筛选、排序</li>
+            <li>现有推荐逻辑已经上线，具备继续扩展的基础</li>
+            <li>支持把商品加入 `/library`，已有基础选品库</li>
+            <li>`/selection` 已经作为选品系统入口存在</li>
+            <li>`/xiaohongshu` 已有内容参考和种草素材池</li>
+            <li>`/facebook` 已有同类广告素材和市场热度参考</li>
+            <li>系统已经能做“发现商品 -> 收藏商品 -> 人工查看”的基础流程</li>
+          </ul>
+          <p style="margin-top:12px;"><strong>现有推荐逻辑具体包括：</strong></p>
+          <ul>
+            <li>候选抽取：按 `etsy / amazon / shopify / google / tiktok` 分平台抽候选，避免单平台刷满结果</li>
+            <li>当前综合推荐分：基于 `review_score`、`review_count`、`tiktok_views`、`profit_margin_estimate`、`sales_trend`、`facebook_ad_count` 六维加权</li>
+            <li>价格甜区加成：价格在 `19-65 美元` 区间会额外加分</li>
+            <li>推荐轮换：推荐池会在高分商品里做轮换，保持候选结果动态变化</li>
+            <li>去重和多样化：会做标题去重、平台数量控制、品类数量控制</li>
+            <li>搜索筛选：已支持按平台、品类、价格、利润率、销量增速、关键词、品牌筛选</li>
+            <li>排序方式：当前支持按 `AI 评分`、`销量增速`、`TikTok 热度`、`利润率` 排序</li>
+            <li>Google GMC 维度：商品详情已接入 `gmc_search_volume`，广告系统已有购物广告系列、搜索词、转化词、点击、花费、转化、ROAS 数据</li>
+            <li>库内能力：已支持单个加入选品库和批量加入选品库</li>
+          </ul>
+        </div>
+        <div class="status-card">
+          <h3>还需要完善</h3>
+          <p>问题不在于没有商品，而在于系统还没有形成真正的选品判断、自动候选和自动复盘结构。</p>
+          <ul>
+            <li>没有定制刺绣专属选品标准库</li>
+            <li>没有完整商品维度扩充，缺节日、季节、人群、场景、刺绣适配等字段</li>
+            <li>没有候选、重点、主推、淘汰的状态流转</li>
+            <li>没有本周专题池和周期性选品机制</li>
+            <li>没有自动打标签和自动候选池生成逻辑</li>
+            <li>没有刺绣适配判断和刺绣专属爆款评分</li>
+            <li>没有自动解释为什么推、为什么淘汰</li>
+            <li>没有选品首页看板和自动复盘反馈闭环</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">System Map</div>
+      <h2>极致选品系统的 3 层能力结构</h2>
+      <p class="lead">这套系统更适合按 3 层能力来理解。本周计划先落第 1 层，因为第 1 层是后续刺绣适配和自动化验证的基础承载层。</p>
+
+      <div class="layer-grid">
+        <div class="layer-card">
+          <span class="layer-index">1</span>
+          <h3>选品决策层</h3>
+          <p>让系统会分层、会归因、会表达当前阶段。这是从商品库升级成选品系统的基础层。</p>
+          <ul>
+            <li>节日、季节、人群、场景标签</li>
+            <li>候选、重点、主推、淘汰状态</li>
+            <li>专题池和选品理由</li>
+          </ul>
+        </div>
+        <div class="layer-card">
+          <span class="layer-index">2</span>
+          <h3>刺绣适配层</h3>
+          <p>热卖商品与定制刺绣适配商品并不完全重合，这一层负责判断商品是否真正适合你的品类。</p>
+          <ul>
+            <li>刺绣位是否清晰</li>
+            <li>定制内容是否简单易表达</li>
+            <li>是否适合名字、称呼、纪念日</li>
+            <li>是否容易做出高级感和礼物感</li>
+          </ul>
+        </div>
+        <div class="layer-card">
+          <span class="layer-index">3</span>
+          <h3>爆款验证层</h3>
+          <p>这一层的目标是从“看起来不错”的商品中，进一步验证出更可能形成爆款的商品。</p>
+          <ul>
+            <li>内容热度和广告素材信号</li>
+            <li>同类商品起量节奏</li>
+            <li>平台差异和节日窗口判断</li>
+            <li>历史主推方向复盘</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        <strong>本周范围</strong>
+        <p>这份计划本周先聚焦第 1 层，也就是选品决策层。第 2 层和第 3 层作为后续持续完善方向，建立在第 1 层稳定之后推进。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">Automation Map</div>
+      <h2>自动化选品的 6 组核心能力</h2>
+      <p class="lead">自动化选品的核心，不是简单把人工判断搬到页面上，而是让系统持续收集信号、自动分层、自动筛候选、自动输出推荐解释。这 6 组能力共同组成自动化选品的核心结构。</p>
+
+      <div class="auto-grid">
+        <div class="auto-card">
+          <h3>1. 自动打标签</h3>
+          <p>现在标签需要人来补，自动化选品要求系统先自动判断，再允许人工修正。</p>
+          <ul>
+            <li>自动识别节日、季节、人群、场景</li>
+            <li>根据标题、图片、平台来源和内容信号自动归类</li>
+            <li>先机判，后人工微调</li>
+          </ul>
+        </div>
+        <div class="auto-card">
+          <h3>2. 自动候选生成</h3>
+          <p>候选池生成目标是从全量商品池中按规则每日自动产出候选结果。</p>
+          <ul>
+            <li>按平台和品类自动拉新</li>
+            <li>自动按周专题池分配候选</li>
+            <li>自动淘汰低相关度商品</li>
+          </ul>
+        </div>
+        <div class="auto-card">
+          <h3>3. 自动刺绣适配判断</h3>
+          <p>这是定制刺绣系统特有的一层，不做这一层，自动化也只是通用选品。</p>
+          <ul>
+            <li>自动判断刺绣位是否明显</li>
+            <li>自动判断是否适合名字、称呼、日期、线稿</li>
+            <li>自动判断是否适合礼品表达和成片展示</li>
+          </ul>
+        </div>
+        <div class="auto-card">
+          <h3>4. 自动爆款评分</h3>
+          <p>现在的推荐分更像热度分，自动化选品要升级成刺绣爆款分。</p>
+          <ul>
+            <li>平台热度 + 内容热度 + 广告热度</li>
+            <li>节日匹配度 + 礼品属性 + 刺绣适配度</li>
+            <li>按专题池分别算分，形成分专题的评估体系</li>
+          </ul>
+        </div>
+        <div class="auto-card">
+          <h3>5. 自动解释为什么推</h3>
+          <p>自动化选品不应只输出分数，系统还需要提供可读的推荐理由，便于复核和追溯。</p>
+          <ul>
+            <li>自动生成选品理由</li>
+            <li>自动说明适合什么节日、什么人群、什么内容角度</li>
+            <li>能追溯推这个商品的依据</li>
+          </ul>
+        </div>
+        <div class="auto-card">
+          <h3>6. 自动复盘和反馈</h3>
+          <p>没有反馈闭环，自动化只会一直重复同样的错误。</p>
+          <ul>
+            <li>记录主推、淘汰、误判原因</li>
+            <li>自动修正下一轮专题池策略</li>
+            <li>形成“越选越准”的闭环</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        <strong>自动化选品的真实目标</strong>
+        <p>最终目标是让系统每天自动给出一批值得关注的候选款、自动解释推荐理由、自动沉淀重点款，人工只做复核和拍板。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">Scorecard</div>
+      <h2>定制刺绣选品评分卡</h2>
+      <p class="lead">选品维度不只用于打标签，还需要沉淀成评分卡。下面这套评分结构适合直接作为系统里的评估标准，所有核心指标都要求查看原始数据，其中利润空间保留一票否决。</p>
+
+      <div class="score-table-wrap">
+        <table class="score-table">
+          <thead>
+            <tr>
+              <th style="width: 16%;">评估维度</th>
+              <th style="width: 9%;">权重</th>
+              <th style="width: 43%;">核心指标</th>
+              <th style="width: 32%;">满分标准</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>① 广告验证</strong></td>
+              <td>20%</td>
+              <td>FB 在投广告主数量、最长在投时长、单条互动量、广告视频完播率、Google Shopping 广告点击率、转化数、ROAS</td>
+              <td>广告主 ≥ 5、在投 ≥ 21 天、互动 ≥ 500、完播率 ＞ 20%、Shopping 广告 ROAS ≥ 2</td>
+            </tr>
+            <tr>
+              <td><strong>② 社媒热度</strong></td>
+              <td>18%</td>
+              <td>TikTok 7 天相关视频总播放量、点赞 ≥ 500 的小红书笔记数、Instagram 话题帖量、YouTube 评测数</td>
+              <td>TikTok 总播 ≥ 500 万、小红书 ≥ 10 条、IG 话题 ≥ 5000 帖、YouTube 有稳定评测内容</td>
+            </tr>
+            <tr>
+              <td><strong>③ 利润空间</strong><br>一票否决</td>
+              <td>20%</td>
+              <td>供应商最低价、尾程运费、包装+手续费、预估 ROI、竞品定价区间</td>
+              <td>ROI ≥ 150%、毛利率 ≥ 50%、运费 ≤ 售价 15%</td>
+            </tr>
+            <tr>
+              <td><strong>④ 市场竞争</strong></td>
+              <td>12%</td>
+              <td>同类 Shopify 卖家数、头部卖家市占率、差异化切入点、知识产权侵权风险</td>
+              <td>无主导垄断卖家、有明确差异化空间、无 IP 风险</td>
+            </tr>
+            <tr>
+              <td><strong>⑤ 产品质量</strong></td>
+              <td>10%</td>
+              <td>1688 / AliExpress 综合评分、供应商退货率、定制复杂度、物流适配性</td>
+              <td>评分 ≥ 4.2、退货率 &lt; 3%、物流无明显障碍</td>
+            </tr>
+            <tr>
+              <td><strong>⑥ 趋势时效</strong></td>
+              <td>5%</td>
+              <td>Google Trends 12 个月曲线、是否季节性产品、当前处于趋势什么位置、GMC 搜索量走势</td>
+              <td>趋势上升或平稳、非旺季末尾、非夕阳品类、GMC 搜索量有持续需求</td>
+            </tr>
+            <tr>
+              <td><strong>⑦ 受众匹配</strong></td>
+              <td>5%</td>
+              <td>目标人群画像清晰度、与现有店铺客群重叠度、复购周期、送礼属性强弱</td>
+              <td>画像明确、与现有客群重叠 ≥ 60%、具备复购或送礼扩散潜力</td>
+            </tr>
+            <tr>
+              <td><strong>⑧ 刺绣适配度</strong></td>
+              <td>10%</td>
+              <td>刺绣位清晰度、名字/日期/称呼/线稿适配度、成品高级感、礼物感、短视频展示力</td>
+              <td>刺绣位明显、个性化表达简单、礼物感强、镜头表达效果好</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer-note">
+        <strong>GMC 数据纳入方式</strong>
+        <p>Google GMC 相关数据建议纳入两层：一层放进趋势时效维度，使用 `gmc_search_volume` 和搜索词走势判断需求强度；另一层放进广告验证维度，使用 Shopping 广告点击、转化、ROAS 判断商业化验证强度。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">Product Schema</div>
+      <h2>商品维度必须扩充，不然选品永远不够深</h2>
+      <p class="lead">当前商品维度更偏平台通用数据，比如热度、评价、利润、广告数。极致选品系统还需要补齐“是否适合做定制刺绣”和“是否适合进入当前专题池”的维度，才能从热度判断进一步提升到适配度判断。</p>
+
+      <div class="dim-grid">
+        <div class="dim-card">
+          <h3>1. 节点维度</h3>
+          <p>让系统知道商品适合什么时间卖。</p>
+          <ul>
+            <li>season_tags</li>
+            <li>holiday_tags</li>
+            <li>weekly_campaign</li>
+            <li>event_window：预热期 / 爆发期 / 尾期</li>
+          </ul>
+        </div>
+        <div class="dim-card">
+          <h3>2. 人群场景维度</h3>
+          <p>让系统知道商品卖给谁、在哪个画面里卖。</p>
+          <ul>
+            <li>audience_tags</li>
+            <li>scenario_tags</li>
+            <li>gift_relation：爸爸 / 母亲 / 宠物 / 毕业 / 家庭</li>
+            <li>usage_scene：旅行 / bbq / 居家 / 纪念</li>
+          </ul>
+        </div>
+        <div class="dim-card">
+          <h3>3. 刺绣适配维度</h3>
+          <p>这是定制刺绣系统和普通选品系统拉开差距的关键。</p>
+          <ul>
+            <li>embroidery_position：帽前 / 胸前 / 袖口 / 包面</li>
+            <li>customization_type：名字 / 日期 / 称呼 / 线稿</li>
+            <li>embroidery_visibility：刺绣识别度</li>
+            <li>giftability：礼物感强弱</li>
+          </ul>
+        </div>
+        <div class="dim-card">
+          <h3>4. 内容传播维度</h3>
+          <p>让系统知道这件商品适不适合做内容表达。</p>
+          <ul>
+            <li>content_hook：内容切入口</li>
+            <li>visual_impact：首图冲击力</li>
+            <li>video_potential：短视频展示潜力</li>
+            <li>ugc_potential：用户自发分享潜力</li>
+          </ul>
+        </div>
+        <div class="dim-card">
+          <h3>5. 选品判断维度</h3>
+          <p>让系统从候选一路推进到主推，不停在收藏动作上。</p>
+          <ul>
+            <li>selection_status</li>
+            <li>selection_reason</li>
+            <li>selection_confidence：判断信心</li>
+            <li>manual_review_flag：是否需要人工复核</li>
+          </ul>
+        </div>
+        <div class="dim-card">
+          <h3>6. 自动化分数维度</h3>
+          <p>最终要把多个信号压缩成可排序、可复核的自动选品分。</p>
+          <ul>
+            <li>trend_score：趋势热度分</li>
+            <li>embroidery_fit_score：刺绣适配分</li>
+            <li>gift_score：礼品属性分</li>
+            <li>campaign_score：专题匹配分</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        <strong>本周要求</strong>
+        <p>本周不一定一次性完成所有维度建设，但必须先把维度结构定义出来。完成这层扩充之后，自动化选品才能从热度排序进一步走向结构化判断。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">Target Shape</div>
+      <h2>极致选品系统必须回答 6 个问题</h2>
+      <p class="lead">这周的整改目标很单一：先把自动化选品需要的判断结构搭起来，让系统围绕定制刺绣的真实选品逻辑运转，稳定识别出适合节日、适合送礼、适合个性化表达、适合内容传播的商品。</p>
+      <div class="grid-3 question-grid mt-24">
+        <div class="card soft">
+          <span class="question-num">1</span>
+          <div class="card-title">适合什么节日</div>
+          <p>能否明确挂到 `Father's Day`、`Memorial Day`、`Graduation` 等节点。</p>
+        </div>
+        <div class="card soft">
+          <span class="question-num">2</span>
+          <div class="card-title">适合什么季节</div>
+          <p>是春夏类轻礼品，还是更适合某个短时窗口的专题款。</p>
+        </div>
+        <div class="card soft">
+          <span class="question-num">3</span>
+          <div class="card-title">卖给谁</div>
+          <p>关系人群必须清楚，比如爸爸、宠物主人、毕业生、家庭、情侣。</p>
+        </div>
+        <div class="card soft">
+          <span class="question-num">4</span>
+          <div class="card-title">适合什么场景</div>
+          <p>送礼、旅行、烧烤、宠物、居家、毕业，场景越明确越容易打爆。</p>
+        </div>
+        <div class="card soft">
+          <span class="question-num">5</span>
+          <div class="card-title">为什么可能爆</div>
+          <p>要说得清情绪价值、定制空间、视觉冲击和内容传播潜力。</p>
+        </div>
+        <div class="card soft">
+          <span class="question-num">6</span>
+          <div class="card-title">现在处于什么阶段</div>
+          <p>商品必须有明确状态，不能一直停留在“已收藏”的模糊阶段。</p>
+        </div>
+      </div>
+
+      <div class="section-kicker mt-24">Core Module</div>
+      <h2>本周同步推进的 6 条整改主线</h2>
+      <p class="lead">本周围绕自动化选品的最小闭环，同时推进 6 条主线。选品决策模块只是其中之一，它负责把其他能力串起来。</p>
+
+      <div class="track-grid">
+        <div class="track-card">
+          <h3>1. 选品标准库</h3>
+          <p>先把定制刺绣的爆款标准写清楚，后续所有自动化都基于这套标准。</p>
+          <ul>
+            <li>礼品属性</li>
+            <li>关系人群</li>
+            <li>定制表达难度</li>
+            <li>视觉展示效果</li>
+          </ul>
+        </div>
+        <div class="track-card">
+          <h3>2. 选品决策模块</h3>
+          <p>让每个商品有标签、状态、专题池和选品理由，形成统一判断层。</p>
+          <ul>
+            <li>season_tags</li>
+            <li>holiday_tags</li>
+            <li>selection_status</li>
+            <li>selection_reason</li>
+          </ul>
+        </div>
+        <div class="track-card">
+          <h3>3. 自动候选池</h3>
+          <p>从全量商品池中按规则生成候选样板，过渡到后续每日自动拉新。</p>
+          <ul>
+            <li>专题池分配</li>
+            <li>平台和品类分层</li>
+            <li>低相关度商品排除</li>
+          </ul>
+        </div>
+        <div class="track-card">
+          <h3>4. 刺绣适配判断</h3>
+          <p>把“热卖”转成“适合做刺绣热卖”，过滤不适合你品类的商品。</p>
+          <ul>
+            <li>刺绣位清晰度</li>
+            <li>名字/称呼/日期适配</li>
+            <li>礼物感与成片感</li>
+          </ul>
+        </div>
+        <div class="track-card">
+          <h3>5. 爆款评分规则</h3>
+          <p>把热度、节日匹配度、内容潜力和刺绣适配度合成更准确的选品分。</p>
+          <ul>
+            <li>平台热度</li>
+            <li>内容热度</li>
+            <li>节日匹配度</li>
+            <li>刺绣适配度</li>
+          </ul>
+        </div>
+        <div class="track-card">
+          <h3>6. 选品看板</h3>
+          <p>让 `/selection` 真正成为本周选品作战台，并承担首页看板角色。</p>
+          <ul>
+            <li>专题池看板</li>
+            <li>候选/重点/主推分层</li>
+            <li>主推结构总览</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="module-strip">
+        <div class="module-pill"><strong>season_tags</strong><span>季节标签</span></div>
+        <div class="module-pill"><strong>holiday_tags</strong><span>节日标签</span></div>
+        <div class="module-pill"><strong>audience_tags</strong><span>人群标签</span></div>
+        <div class="module-pill"><strong>scenario_tags</strong><span>场景标签</span></div>
+        <div class="module-pill"><strong>selection_status</strong><span>待筛选 / 候选 / 重点 / 主推 / 淘汰</span></div>
+        <div class="module-pill"><strong>weekly_campaign</strong><span>本周专题池</span></div>
+        <div class="module-pill"><strong>selection_reason</strong><span>选品理由</span></div>
+      </div>
+
+      <div class="chip-list">
+        <span class="chip">Memorial Day</span>
+        <span class="chip">Father's Day</span>
+        <span class="chip">Graduation</span>
+        <span class="chip">Summer</span>
+        <span class="chip warm">spring</span>
+        <span class="chip warm">summer</span>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">Daily Plan</div>
+      <h2>今天到周五的整改节奏</h2>
+      <div class="timeline">
+        <div class="day">
+          <div class="day-tag">
+            <strong>05-12</strong>
+            <span>周二</span>
+          </div>
+          <div class="day-body">
+            <h3>定义极致选品规则</h3>
+            <p>周二先定规则框架和商品维度结构，确保后面几天推进的是完整选品系统。当天重点是同时启动“标准库、标签体系、专题池、刺绣适配标准、商品维度扩充”。</p>
+            <div class="mini-grid">
+              <div class="mini-box">
+                <strong>本日完成</strong>
+                <ul>
+                  <li>定义定制刺绣爆款判断标准</li>
+                  <li>定义标签体系</li>
+                  <li>定义选品状态</li>
+                  <li>定义本周专题池</li>
+                  <li>定义进入主推池的门槛</li>
+                  <li>梳理商品维度扩充清单</li>
+                </ul>
+              </div>
+              <div class="mini-box">
+                <strong>同步整理</strong>
+                <ul>
+                  <li>定义刺绣适配维度</li>
+                  <li>定义内容传播维度</li>
+                  <li>定义自动化评分维度</li>
+                  <li>定义哪些字段后续要支持自动生成</li>
+                  <li>定义首页看板核心指标</li>
+                </ul>
+              </div>
+            </div>
+            <div class="footer-note">
+              <strong>周二收口结果</strong>
+              <p>输出一套完整的选品标准结构，包括选品规则、商品维度扩充结构、专题池规则、状态流转规则和自动化评分输入项。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="day">
+          <div class="day-tag">
+            <strong>05-13</strong>
+            <span>周三</span>
+          </div>
+          <div class="day-body">
+            <h3>整改选品池结构</h3>
+            <p>周三重点放在候选池机制、专题池机制、商品分层结构和人工复核入口的搭建，让系统开始具备自动筛候选的结构。</p>
+            <div class="mini-grid">
+              <div class="mini-box">
+                <strong>本日完成</strong>
+                <ul>
+                  <li>明确 `/products` 是发现和初筛入口</li>
+                  <li>明确 `/library` 是筛选和分层入口</li>
+                  <li>设计自动候选池生成逻辑</li>
+                  <li>设计专题池分配逻辑</li>
+                  <li>设计商品默认进入候选状态的规则</li>
+                  <li>把 60 个样板候选款分进 4 个专题池</li>
+                  <li>验证每个商品是否有明确人群和场景</li>
+                  <li>整理低相关度商品的排除规则</li>
+                  <li>定义人工复核入口和触发条件</li>
+                  <li>形成候选池样板数据</li>
+                </ul>
+              </div>
+            </div>
+            <div class="footer-note">
+              <strong>周三收口结果</strong>
+              <p>形成 60 个候选款样板池，每个专题池先放 15 个，同时沉淀一套可复用的“自动候选池生成规则 + 人工复核规则”。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="day">
+          <div class="day-tag">
+            <strong>05-14</strong>
+            <span>周四</span>
+          </div>
+          <div class="day-body">
+            <h3>建立爆款判断流程</h3>
+            <p>周四要把人工判断沉淀成规则：从 60 个候选款压缩到 20 个重点款，同时把刺绣适配和爆款评分逻辑整理出来，作为自动化选品最关键的判断引擎。</p>
+            <div class="mini-grid">
+              <div class="mini-box">
+                <strong>本日完成</strong>
+                <ul>
+                  <li>节日匹配度</li>
+                  <li>人群清晰度</li>
+                  <li>定制表达强度</li>
+                  <li>图片视觉冲击</li>
+                  <li>内容传播潜力</li>
+                  <li>同类商品热度</li>
+                  <li>定义刺绣适配判断规则</li>
+                  <li>定义爆款评分拆分项</li>
+                  <li>整理重点款的 selection_reason 模板</li>
+                  <li>明确 `/xiaohongshu` 和 `/facebook` 的验证输入方式</li>
+                  <li>把 60 款压缩到 20 个重点款</li>
+                </ul>
+              </div>
+            </div>
+            <div class="footer-note">
+              <strong>周四收口结果</strong>
+              <p>形成 20 个重点款，同时输出两套关键判断规则：一套是刺绣适配规则，一套是爆款评分规则，后续自动化直接围绕这两套规则建设。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="day">
+          <div class="day-tag">
+            <strong>05-15</strong>
+            <span>周五</span>
+          </div>
+          <div class="day-body">
+            <h3>形成主推池和选品首页</h3>
+            <p>周五把所有主线收口到 `/selection`。周五结束时，系统不只是有 8 个主推款，而是有一套看得见、跑得动、能继续自动化升级的选品作战结构和首页看板。</p>
+            <div class="mini-grid">
+              <div class="mini-box">
+                <strong>本日完成</strong>
+                <ul>
+                  <li>从 20 个重点款中选出 8 个主推款</li>
+                  <li>确定主推结构分布</li>
+                  <li>为每个主推款补完整标签和选品理由</li>
+                  <li>确定淘汰款和保留观察款</li>
+                  <li>整理 `/selection` 首页看板结构</li>
+                  <li>展示 4 个专题池和分层数量</li>
+                  <li>展示本周 8 个主推款</li>
+                  <li>展示自动化选品后续升级路径</li>
+                  <li>整理下周自动化建设优先级</li>
+                </ul>
+              </div>
+            </div>
+            <div class="footer-note">
+              <strong>周五收口结果</strong>
+              <p>形成 8 个主推款、20 个重点款、60 个候选款，并把 6 条整改主线都收口到一张周看板里：标准库、决策模块、候选池、商品维度、刺绣适配、爆款评分、选品看板。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="section-kicker">Outcome</div>
+      <h2>周五结束时，系统应该长成这样</h2>
+      <div class="grid-4 mt-24">
+        <div class="card brand">
+          <div class="score">60</div>
+          <div class="card-title">候选款</div>
+          <p>从多平台商品池里拉出，按专题池组织。</p>
+        </div>
+        <div class="card brand">
+          <div class="score">20</div>
+          <div class="card-title">重点款</div>
+          <p>完成判断和压缩，有清晰进入重点池的理由。</p>
+        </div>
+        <div class="card brand">
+          <div class="score">8</div>
+          <div class="card-title">主推款</div>
+          <p>能明确节日、人群、场景、爆款理由。</p>
+        </div>
+        <div class="card brand">
+          <div class="score">4</div>
+          <div class="card-title">专题池</div>
+          <p>围绕 Memorial Day、Father's Day、Graduation、Summer 运转。</p>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-step">发现商品</div>
+        <div class="flow-step">加入候选</div>
+        <div class="flow-step">打标签</div>
+        <div class="flow-step">归专题池</div>
+        <div class="flow-step">写选品理由</div>
+        <div class="flow-step">进入重点</div>
+        <div class="flow-step">进入主推</div>
+        <div class="flow-step">淘汰不合适商品</div>
+      </div>
+
+      <div class="footer-note">
+        <strong>一句话总结</strong>
+        <p>本周计划的核心是：把系统从“有很多商品”整改成“能按定制刺绣逻辑筛出爆款商品”，最终稳定选出有节日窗口、有送礼关系、有个性化刺绣空间、有视觉冲击、有内容传播潜力的商品。</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

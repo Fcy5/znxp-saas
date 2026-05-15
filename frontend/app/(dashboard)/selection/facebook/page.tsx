@@ -11,6 +11,8 @@ import {
 } from "lucide-react"
 import { request, STATIC_BASE } from "@/lib/api"
 
+const FB_REMOTE_STATIC_BASE = process.env.NEXT_PUBLIC_FB_STATIC_BASE || "https://znxp-sass.vqmjc.cc"
+
 interface FbAd {
   id: number
   store_name: string
@@ -178,8 +180,27 @@ export default function FacebookPage() {
     syncPollRef.current = setInterval(fetchSyncStatus, 5000)
   }
 
-  // resolve static URL for locally downloaded files
-  const staticUrl = (src: string) => src?.startsWith("/static/") ? `${STATIC_BASE}${src}` : src
+  // Facebook 广告媒体当前来自线上库；本地开发时优先走线上静态域名，避免本地 /static 404
+  const staticUrl = (src: string) => {
+    if (!src) return src
+    if (src.startsWith("http://localhost:8000/static/")) {
+      return `${FB_REMOTE_STATIC_BASE}${src.slice("http://localhost:8000".length)}`
+    }
+    if (src.startsWith("http://127.0.0.1:8000/static/")) {
+      return `${FB_REMOTE_STATIC_BASE}${src.slice("http://127.0.0.1:8000".length)}`
+    }
+    if (!src.startsWith("/static/")) return src
+
+    if (
+      src.startsWith("/static/uploads/fb/") &&
+      typeof window !== "undefined" &&
+      ["127.0.0.1", "localhost"].includes(window.location.hostname)
+    ) {
+      return `${FB_REMOTE_STATIC_BASE}${src}`
+    }
+
+    return `${STATIC_BASE}${src}`
+  }
 
   const isImg = (src: string) => Boolean(src) && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(src)
   const isVid = (src: string) => /\.(mp4|mov|webm)(\?|$)/i.test(src)

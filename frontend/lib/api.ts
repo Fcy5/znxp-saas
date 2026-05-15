@@ -1,11 +1,12 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ||
-  (typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.host}/api/v1`
-    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"))
+const DEFAULT_API_BASE = "/api/v1"
+
+export const API_BASE = typeof window !== "undefined"
+  ? (process.env.NEXT_PUBLIC_API_BASE || DEFAULT_API_BASE)
+  : (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001/api/v1")
 // 静态资源 base（去掉 /api/v1 路径）
 export const STATIC_BASE = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_STATIC_BASE || `${window.location.protocol}//${window.location.host}`)
-  : (process.env.NEXT_PUBLIC_STATIC_BASE || (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1$/, ""))
+  : (process.env.NEXT_PUBLIC_STATIC_BASE || (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001/api/v1").replace(/\/api\/v1$/, ""))
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null
@@ -43,6 +44,130 @@ export interface ProductRecommendation extends ProductCard {
   rec_reason: string
 }
 
+export interface SelectionCampaignBucket {
+  campaign: string
+  keyword: string
+  category?: string | null
+  total_candidates: number
+  products: ProductCard[]
+}
+
+export interface SelectionCampaignSummary {
+  campaign: string
+  candidate: number
+  shortlisted: number
+  featured: number
+  rejected: number
+  total: number
+}
+
+export interface SelectionOverview {
+  candidate: number
+  shortlisted: number
+  featured: number
+  rejected: number
+  total: number
+  campaigns: SelectionCampaignSummary[]
+  top_products: LibraryProductCard[]
+}
+
+export interface SelectionAutoCurateResult {
+  candidate: number
+  shortlisted: number
+  featured: number
+  rejected: number
+  total_curated: number
+  total_saved: number
+  campaigns: SelectionCampaignSummary[]
+}
+
+export interface SelectionWeightConfig {
+  ad_validation: number
+  social_heat: number
+  profit: number
+  market_competition: number
+  product_quality: number
+  trend_timing: number
+  audience_fit: number
+  embroidery_fit: number
+}
+
+export interface SelectionThresholdConfig {
+  featured: number
+  shortlisted: number
+  rejected: number
+}
+
+export interface SelectionCampaignPolicy {
+  campaign: string
+  target_quota: number
+  effective_target_quota: number
+  minimum_relevance_score: number
+  strict_custom_signal: boolean
+  strict_audience_signal: boolean
+  strict_scenario_signal: boolean
+  feedback_sample_count: number
+  recommended_adjustments: string[]
+}
+
+export interface SelectionPolicyResponse {
+  weights: SelectionWeightConfig
+  thresholds: SelectionThresholdConfig
+  tag_sources: Record<string, string>
+  campaigns: SelectionCampaignPolicy[]
+}
+
+export interface SelectionStandardsResponse {
+  gift_attributes: string[]
+  audiences: string[]
+  customization_difficulty: string[]
+  visual_merchandising: string[]
+}
+
+export interface SelectionFeedbackPayload {
+  outcome: string
+  reasons: string[]
+  notes?: string
+  next_action?: string
+}
+
+export interface SelectionFeedbackSummaryCampaign {
+  campaign: string
+  total_feedback: number
+  approved: number
+  rejected: number
+  missed: number
+  top_reasons: string[]
+  recommended_adjustments: string[]
+}
+
+export interface SelectionFeedbackSummary {
+  total_feedback: number
+  total_approved: number
+  total_rejected: number
+  total_missed: number
+  campaigns: SelectionFeedbackSummaryCampaign[]
+  global_recommendations: string[]
+}
+
+export interface SelectionTaggingResponse {
+  season_tags: string[]
+  holiday_tags: string[]
+  audience_tags: string[]
+  scenario_tags: string[]
+  customization_type: string[]
+  event_window?: string
+  content_hook?: string
+  tag_confidence: number
+  tag_summary: string
+}
+
+export interface SelectionBatchUpdateRequest {
+  product_ids: number[]
+  selection_status?: string
+  manual_review_flag?: boolean
+}
+
 export interface SelectionMeta {
   season_tags?: string[]
   holiday_tags?: string[]
@@ -68,6 +193,14 @@ export interface SelectionMeta {
   gift_score?: number
   campaign_score?: number
   final_selection_score?: number
+  score_breakdown?: Record<string, number>
+  score_summary?: string
+  review_feedback?: {
+    outcome?: string
+    reasons?: string[]
+    notes?: string
+    next_action?: string
+  }
 }
 
 export interface ProductCard {
@@ -141,6 +274,26 @@ export const productApi = {
   recommendations: (limit = 5, seed = 0) =>
     request<ApiResponse<ProductRecommendation[]>>(`/products/recommendations?limit=${limit}&seed=${seed}`),
 
+  selectionCandidatePool: (per_campaign = 8) =>
+    request<ApiResponse<SelectionCampaignBucket[]>>(`/products/selection/candidate-pool?per_campaign=${per_campaign}`),
+
+  selectionOverview: (top_limit = 8) =>
+    request<ApiResponse<SelectionOverview>>(`/products/selection/overview?top_limit=${top_limit}`),
+
+  selectionPolicy: () =>
+    request<ApiResponse<SelectionPolicyResponse>>("/products/selection/policy"),
+
+  selectionStandards: () =>
+    request<ApiResponse<SelectionStandardsResponse>>("/products/selection/standards"),
+
+  selectionFeedbackSummary: () =>
+    request<ApiResponse<SelectionFeedbackSummary>>("/products/selection/feedback-summary"),
+
+  autoCurateSelection: (per_campaign?: number) =>
+    request<ApiResponse<SelectionAutoCurateResult>>(`/products/selection/auto-curate${per_campaign ? `?per_campaign=${per_campaign}` : ""}`, {
+      method: "POST",
+    }),
+
   search: (body: ProductFilterRequest) =>
     request<PagedResponse<ProductCard>>("/products/search", {
       method: "POST",
@@ -156,8 +309,8 @@ export const productApi = {
   unsave: (id: number) =>
     request<ApiResponse<null>>(`/products/${id}/save`, { method: "DELETE" }),
 
-  myLibrary: (page = 1, page_size = 20, keyword?: string, shop_id?: number) =>
-    request<PagedResponse<LibraryProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${shop_id ? `&shop_id=${shop_id}` : ""}`),
+  myLibrary: (page = 1, page_size = 20, keyword?: string, shop_id?: number, current_cycle_only = false) =>
+    request<PagedResponse<LibraryProductCard>>(`/products/library/list?page=${page}&page_size=${page_size}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${shop_id ? `&shop_id=${shop_id}` : ""}${current_cycle_only ? "&current_cycle_only=true" : ""}`),
 
   batchSave: (product_ids: number[]) =>
     request<ApiResponse<null>>("/products/batch-save", {
@@ -165,10 +318,27 @@ export const productApi = {
       body: JSON.stringify({ product_ids }),
     }),
 
+  batchUpdateSelection: (body: SelectionBatchUpdateRequest) =>
+    request<ApiResponse<null>>("/products/selection/batch-update", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
   updateSelectionMeta: (id: number, body: SelectionMeta) =>
     request<ApiResponse<SelectionMeta>>(`/products/${id}/selection-meta`, {
       method: "PATCH",
       body: JSON.stringify(body),
+    }),
+
+  saveSelectionFeedback: (id: number, body: SelectionFeedbackPayload) =>
+    request<ApiResponse<SelectionMeta>>(`/products/${id}/selection-feedback`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  autoTagSelectionProduct: (id: number) =>
+    request<ApiResponse<SelectionTaggingResponse>>(`/products/${id}/selection-auto-tags`, {
+      method: "POST",
     }),
 }
 

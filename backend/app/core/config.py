@@ -61,6 +61,21 @@ class Settings(BaseSettings):
     google_ads_customer_id: str = ""
     google_ads_developer_token: str = ""
 
+    # Selection system
+    selection_weight_ad_validation: float = 0.20
+    selection_weight_social_heat: float = 0.18
+    selection_weight_profit: float = 0.20
+    selection_weight_market_competition: float = 0.12
+    selection_weight_product_quality: float = 0.10
+    selection_weight_trend_timing: float = 0.05
+    selection_weight_audience_fit: float = 0.05
+    selection_weight_embroidery_fit: float = 0.10
+    selection_threshold_featured: float = 78.0
+    selection_threshold_shortlisted: float = 60.0
+    selection_threshold_rejected: float = 35.0
+    selection_default_campaign_target: int = 15
+    selection_campaign_quota_overrides: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

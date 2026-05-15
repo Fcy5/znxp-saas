@@ -1,5 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Any
+
+WEEKLY_CAMPAIGNS = {"Memorial Day", "Father's Day", "Graduation", "Summer"}
+SELECTION_STATUSES = {"candidate", "shortlisted", "featured", "rejected"}
 
 
 class ProductCard(BaseModel):
@@ -45,6 +48,11 @@ class SelectionMeta(BaseModel):
     gift_score: float | None = None
     campaign_score: float | None = None
     final_selection_score: float | None = None
+    score_breakdown: dict[str, float] | None = None
+    score_summary: str | None = None
+    tag_confidence: float | None = None
+    tag_summary: str | None = None
+    review_feedback: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -75,6 +83,139 @@ class ProductRecommendation(ProductCard):
     review_count: int | None = None
     rec_score: float          # 综合推荐分 0-100
     rec_reason: str           # 推荐理由文本
+
+
+class SelectionCampaignBucket(BaseModel):
+    campaign: str
+    keyword: str
+    category: str | None = None
+    total_candidates: int
+    products: list[ProductCard]
+
+
+class SelectionCampaignSummary(BaseModel):
+    campaign: str
+    candidate: int
+    shortlisted: int
+    featured: int
+    rejected: int
+    total: int
+
+
+class SelectionOverview(BaseModel):
+    candidate: int
+    shortlisted: int
+    featured: int
+    rejected: int
+    total: int
+    campaigns: list[SelectionCampaignSummary]
+    top_products: list[LibraryProductCard]
+
+
+class SelectionAutoCurateResult(BaseModel):
+    candidate: int
+    shortlisted: int
+    featured: int
+    rejected: int
+    total_curated: int
+    total_saved: int
+    campaigns: list[SelectionCampaignSummary]
+
+
+class SelectionWeightConfig(BaseModel):
+    ad_validation: float
+    social_heat: float
+    profit: float
+    market_competition: float
+    product_quality: float
+    trend_timing: float
+    audience_fit: float
+    embroidery_fit: float
+
+
+class SelectionThresholdConfig(BaseModel):
+    featured: float
+    shortlisted: float
+    rejected: float
+
+
+class SelectionCampaignPolicy(BaseModel):
+    campaign: str
+    target_quota: int
+    effective_target_quota: int
+    minimum_relevance_score: int
+    strict_custom_signal: bool
+    strict_audience_signal: bool
+    strict_scenario_signal: bool
+    feedback_sample_count: int
+    recommended_adjustments: list[str]
+
+
+class SelectionPolicyResponse(BaseModel):
+    weights: SelectionWeightConfig
+    thresholds: SelectionThresholdConfig
+    tag_sources: dict[str, str]
+    campaigns: list[SelectionCampaignPolicy]
+
+
+class SelectionStandardsResponse(BaseModel):
+    gift_attributes: list[str]
+    audiences: list[str]
+    customization_difficulty: list[str]
+    visual_merchandising: list[str]
+
+
+class SelectionFeedbackPayload(BaseModel):
+    outcome: str
+    reasons: list[str] = []
+    notes: str | None = None
+    next_action: str | None = None
+
+
+class SelectionFeedbackSummaryCampaign(BaseModel):
+    campaign: str
+    total_feedback: int
+    approved: int
+    rejected: int
+    missed: int
+    top_reasons: list[str]
+    recommended_adjustments: list[str]
+
+
+class SelectionFeedbackSummary(BaseModel):
+    total_feedback: int
+    total_approved: int
+    total_rejected: int
+    total_missed: int
+    campaigns: list[SelectionFeedbackSummaryCampaign]
+    global_recommendations: list[str]
+
+
+class SelectionTaggingResponse(BaseModel):
+    season_tags: list[str]
+    holiday_tags: list[str]
+    audience_tags: list[str]
+    scenario_tags: list[str]
+    customization_type: list[str]
+    event_window: str | None
+    content_hook: str | None
+    tag_confidence: float
+    tag_summary: str
+
+
+class SelectionBatchUpdateRequest(BaseModel):
+    product_ids: list[int]
+    selection_status: str | None = None
+    manual_review_flag: bool | None = None
+
+    @field_validator("selection_status")
+    @classmethod
+    def validate_batch_selection_status(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in SELECTION_STATUSES:
+            raise ValueError(f"selection_status must be one of: {', '.join(sorted(SELECTION_STATUSES))}")
+        return value
 
 
 class ProductFilterRequest(BaseModel):
@@ -117,3 +258,21 @@ class SelectionMetaUpdateRequest(BaseModel):
     gift_score: float | None = None
     campaign_score: float | None = None
     final_selection_score: float | None = None
+
+    @field_validator("weekly_campaign")
+    @classmethod
+    def validate_weekly_campaign(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in WEEKLY_CAMPAIGNS:
+            raise ValueError(f"weekly_campaign must be one of: {', '.join(sorted(WEEKLY_CAMPAIGNS))}")
+        return value
+
+    @field_validator("selection_status")
+    @classmethod
+    def validate_selection_status(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in SELECTION_STATUSES:
+            raise ValueError(f"selection_status must be one of: {', '.join(sorted(SELECTION_STATUSES))}")
+        return value

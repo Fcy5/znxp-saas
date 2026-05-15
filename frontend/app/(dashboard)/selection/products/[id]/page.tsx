@@ -16,11 +16,11 @@ import {
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { productApi, shopApi, publishApi, uploadApi, agentApi, AVAILABLE_MODELS, IMAGE_MODELS, IMAGE_SIZES, IMAGE_QUALITIES, IMAGE_PROMPTS, STATIC_BASE, type ProductDetail, type SelectionMeta, type Shop, type SizeVariant } from "@/lib/api"
+import { SELECTION_STATUSES, WEEKLY_CAMPAIGNS } from "@/lib/selection"
 import { AgentWorkflow } from "@/components/agent/agent-workflow"
 
 const APPAREL_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"]
-const CAMPAIGNS = ["Memorial Day", "Father's Day", "Mother's Day", "Graduation", "Summer", "Valentine's Day", "Evergreen Gifts"]
-const SELECTION_STATUSES = ["candidate", "shortlisted", "featured", "rejected"]
+const CAMPAIGNS = [...WEEKLY_CAMPAIGNS]
 
 const PLATFORM_LABEL: Record<string, string> = {
   amazon: "Amazon", etsy: "Etsy", shopify: "Shopify",
@@ -68,6 +68,14 @@ export default function ProductDetailPage() {
   })
   const [savingSelection, setSavingSelection] = useState(false)
   const [selectionMsg, setSelectionMsg] = useState("")
+  const [autoTagging, setAutoTagging] = useState(false)
+  const [taggingMsg, setTaggingMsg] = useState("")
+  const [feedbackOutcome, setFeedbackOutcome] = useState("approved")
+  const [feedbackReasons, setFeedbackReasons] = useState("")
+  const [feedbackNotes, setFeedbackNotes] = useState("")
+  const [feedbackAction, setFeedbackAction] = useState("")
+  const [savingFeedback, setSavingFeedback] = useState(false)
+  const [feedbackMsg, setFeedbackMsg] = useState("")
 
   // AI 修图
   const [showImageStudio, setShowImageStudio] = useState(false)
@@ -131,7 +139,13 @@ export default function ProductDetailPage() {
       .then(res => {
         setProduct(res.data)
         if (res.data?.is_saved) setSaved(true)
-        if (res.data?.selection_meta) setSelectionMeta(res.data.selection_meta)
+        if (res.data?.selection_meta) {
+          setSelectionMeta(res.data.selection_meta)
+          setFeedbackOutcome(res.data.selection_meta.review_feedback?.outcome || "approved")
+          setFeedbackReasons((res.data.selection_meta.review_feedback?.reasons || []).join(", "))
+          setFeedbackNotes(res.data.selection_meta.review_feedback?.notes || "")
+          setFeedbackAction(res.data.selection_meta.review_feedback?.next_action || "")
+        }
       })
       .catch(() => setError("商品不存在或加载失败"))
       .finally(() => setLoading(false))
@@ -161,12 +175,63 @@ export default function ProductDetailPage() {
         await productApi.save(id)
         setSaved(true)
       }
-      await productApi.updateSelectionMeta(id, selectionMeta)
+      const res = await productApi.updateSelectionMeta(id, selectionMeta)
+      if (res.data) setSelectionMeta(res.data)
       setSelectionMsg("选品决策已保存")
     } catch (err: unknown) {
       setSelectionMsg(err instanceof Error ? err.message : "保存失败")
     } finally {
       setSavingSelection(false)
+    }
+  }
+
+  const runAutoTagging = async () => {
+    setAutoTagging(true)
+    setTaggingMsg("")
+    try {
+      const res = await productApi.autoTagSelectionProduct(id)
+      if (res.data) {
+        setSelectionMeta(prev => ({
+          ...prev,
+          season_tags: res.data.season_tags,
+          holiday_tags: res.data.holiday_tags,
+          audience_tags: res.data.audience_tags,
+          scenario_tags: res.data.scenario_tags,
+          customization_type: res.data.customization_type,
+          event_window: res.data.event_window,
+          content_hook: res.data.content_hook,
+          tag_confidence: res.data.tag_confidence,
+          tag_summary: res.data.tag_summary,
+        }))
+        setTaggingMsg(`${res.data.tag_summary} 识别信心 ${res.data.tag_confidence}。`)
+      }
+    } catch (err: unknown) {
+      setTaggingMsg(err instanceof Error ? err.message : "自动识别失败")
+    } finally {
+      setAutoTagging(false)
+    }
+  }
+
+  const saveSelectionFeedback = async () => {
+    setSavingFeedback(true)
+    setFeedbackMsg("")
+    try {
+      if (!saved) {
+        await productApi.save(id)
+        setSaved(true)
+      }
+      const res = await productApi.saveSelectionFeedback(id, {
+        outcome: feedbackOutcome,
+        reasons: feedbackReasons.split(",").map(v => v.trim()).filter(Boolean),
+        notes: feedbackNotes || undefined,
+        next_action: feedbackAction || undefined,
+      })
+      if (res.data) setSelectionMeta(res.data)
+      setFeedbackMsg("复核反馈已保存")
+    } catch (err: unknown) {
+      setFeedbackMsg(err instanceof Error ? err.message : "反馈保存失败")
+    } finally {
+      setSavingFeedback(false)
     }
   }
 
@@ -447,7 +512,7 @@ export default function ProductDetailPage() {
 
             {/* Actions */}
             <div className="space-y-2">
-              <Button className="w-full gap-2 h-11" onClick={openPublish}>
+              <Button className="w-full gap-2 h-11" onClick={() => openPublish()}>
                 <Rocket className="w-4 h-4" />
                 改款上架到 Shopify
               </Button>
@@ -496,6 +561,30 @@ export default function ProductDetailPage() {
                     </select>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button size="sm" variant="outline" className="gap-2" onClick={runAutoTagging} disabled={autoTagging}>
+                    {autoTagging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    自动识别标签
+                  </Button>
+                  {taggingMsg && <span className="text-xs text-muted-foreground">{taggingMsg}</span>}
+                </div>
+
+                {(selectionMeta.tag_summary || selectionMeta.tag_confidence != null) && (
+                  <div className="rounded-xl border border-border bg-secondary px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-muted-foreground">自动标签识别结果</span>
+                      {selectionMeta.tag_confidence != null && (
+                        <span className="text-[11px] font-medium text-foreground">
+                          信心 {selectionMeta.tag_confidence}
+                        </span>
+                      )}
+                    </div>
+                    {selectionMeta.tag_summary && (
+                      <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{selectionMeta.tag_summary}</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -550,6 +639,74 @@ export default function ProductDetailPage() {
                   <div className="space-y-1.5">
                     <label className="text-[11px] text-muted-foreground">刺绣适配分</label>
                     <Input type="number" value={selectionMeta.embroidery_fit_score ?? ""} onChange={e => setSelectionMeta(prev => ({ ...prev, embroidery_fit_score: e.target.value ? Number(e.target.value) : undefined }))} />
+                  </div>
+                </div>
+
+                {selectionMeta.score_breakdown && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-[11px] text-muted-foreground">8 维评分卡</label>
+                      {selectionMeta.final_selection_score != null && (
+                        <span className="text-xs text-foreground font-medium">综合分 {selectionMeta.final_selection_score}</span>
+                      )}
+                    </div>
+                    {selectionMeta.score_summary && (
+                      <div className="rounded-lg border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
+                        {selectionMeta.score_summary}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        ["广告验证", selectionMeta.score_breakdown.ad_validation],
+                        ["社媒热度", selectionMeta.score_breakdown.social_heat],
+                        ["利润空间", selectionMeta.score_breakdown.profit],
+                        ["市场竞争", selectionMeta.score_breakdown.market_competition],
+                        ["产品质量", selectionMeta.score_breakdown.product_quality],
+                        ["趋势时效", selectionMeta.score_breakdown.trend_timing],
+                        ["受众匹配", selectionMeta.score_breakdown.audience_fit],
+                        ["刺绣适配", selectionMeta.score_breakdown.embroidery_fit],
+                      ].map(([label, value]) => (
+                        <div key={String(label)} className="rounded-lg border border-border bg-secondary px-3 py-2">
+                          <div className="text-[10px] text-muted-foreground">{label}</div>
+                          <div className="text-sm font-medium text-foreground mt-0.5">{value ?? 0}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3 rounded-xl border border-border p-3">
+                  <div>
+                    <label className="text-[11px] text-muted-foreground">复核反馈</label>
+                    <p className="text-[11px] text-muted-foreground mt-1">记录主推确认、淘汰确认或误判原因，反馈会进入下一轮策略建议。</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={feedbackOutcome}
+                      onChange={e => setFeedbackOutcome(e.target.value)}
+                      className="w-full h-9 rounded-lg border border-border bg-secondary px-3 text-sm"
+                    >
+                      <option value="approved">确认通过</option>
+                      <option value="featured_confirmed">确认主推</option>
+                      <option value="rejected_confirmed">确认淘汰</option>
+                      <option value="featured_missed">主推误判</option>
+                      <option value="rejected_missed">淘汰误判</option>
+                    </select>
+                    <Input value={feedbackAction} onChange={e => setFeedbackAction(e.target.value)} placeholder="next action / keep / redesign / retest" />
+                  </div>
+                  <Input value={feedbackReasons} onChange={e => setFeedbackReasons(e.target.value)} placeholder="原因，逗号分隔：custom weak, audience unclear" />
+                  <textarea
+                    value={feedbackNotes}
+                    onChange={e => setFeedbackNotes(e.target.value)}
+                    placeholder="补充说明这次复核为什么通过、淘汰或误判"
+                    className="w-full min-h-20 rounded-lg border border-border bg-secondary px-3 py-2 text-sm resize-y"
+                  />
+                  <div className="flex items-center gap-3">
+                    <Button size="sm" variant="outline" className="gap-2" onClick={saveSelectionFeedback} disabled={savingFeedback}>
+                      {savingFeedback ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      保存复核反馈
+                    </Button>
+                    {feedbackMsg && <span className="text-xs text-muted-foreground">{feedbackMsg}</span>}
                   </div>
                 </div>
 

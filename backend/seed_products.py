@@ -342,7 +342,7 @@ async def seed():
                         :sales_rank, :sales_trend, :review_count, :review_score,
                         :tiktok_views, :facebook_ad_count, :gmc_search_volume, :etsy_favorites,
                         :profit_margin_estimate, :sentiment_summary, :pain_points, :ai_score,
-                        :is_published, 0
+                        :is_published, FALSE
                     )
                 """),
                 {**p, "pain_points": json.dumps(p["pain_points"])}
