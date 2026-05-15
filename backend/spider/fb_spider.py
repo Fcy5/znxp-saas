@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
 
 DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "52.8.149.180"),
+    "host": os.getenv("DB_HOST", "192.99.45.58"),
     "port": int(os.getenv("DB_PORT", 3306)),
     "db": os.getenv("DB_NAME", "znxp"),
     "user": os.getenv("DB_USER", "znxp"),
@@ -44,6 +44,31 @@ logger = logging.getLogger("fb_spider")
 DOWNLOAD_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
 }
+
+
+def extract_urls_from_text(text: str | None) -> list[str]:
+    if not text:
+        return []
+    urls: list[str] = []
+    for match in re.findall(r'https?://[^\s<>"\]]+', text):
+        clean = match.rstrip(".,)")
+        if clean not in urls:
+            urls.append(clean)
+    return urls
+
+
+def pick_best_ad_link(primary_url: str | None, ad_text: str | None) -> str:
+    primary = (primary_url or "").strip()
+    text_urls = extract_urls_from_text(ad_text)
+
+    for url in text_urls:
+        if "facebook.com" not in url and "fb.com" not in url:
+            return url
+
+    if primary:
+        return primary
+
+    return text_urls[0] if text_urls else ""
 
 
 def download_file(url: str) -> str:
@@ -144,6 +169,130 @@ def parse_date(date_str: str):
     return None
 
 
+def _format_cn_date_from_unix(ts) -> str:
+    try:
+        if ts:
+            dt = datetime.fromtimestamp(int(ts))
+            return f"{dt.year}年{dt.month}月{dt.day}日"
+    except Exception:
+        pass
+    return "未知"
+
+
+def _extract_media_urls(snapshot: dict, media_key: str) -> list[str]:
+    urls: list[str] = []
+    for item in snapshot.get(media_key) or []:
+        if not isinstance(item, dict):
+            continue
+        for key in (
+            "url",
+            "uri",
+            "image_url",
+            "original_image_url",
+            "resized_image_url",
+            "video_hd_url",
+            "video_sd_url",
+            "video_preview_image_url",
+        ):
+            val = item.get(key)
+            if val and isinstance(val, str):
+                urls.append(val)
+                break
+    return urls
+
+
+def _iter_search_result_payloads(obj):
+    if isinstance(obj, dict):
+        if "search_results_connection" in obj and isinstance(obj["search_results_connection"], dict):
+            yield obj["search_results_connection"]
+        for value in obj.values():
+            yield from _iter_search_result_payloads(value)
+    elif isinstance(obj, list):
+        for item in obj:
+            yield from _iter_search_result_payloads(item)
+
+
+def _parse_from_embedded_json(html_content: str) -> list:
+    soup = BeautifulSoup(html_content, "html.parser")
+    ads = []
+    seen = set()
+
+    for script in soup.select('script[type="application/json"]'):
+        raw = script.string or script.get_text(strip=True)
+        if not raw or "search_results_connection" not in raw or "collated_results" not in raw:
+            continue
+        try:
+            payload = json.loads(raw)
+        except Exception:
+            continue
+
+        for conn in _iter_search_result_payloads(payload):
+            edges = conn.get("edges") or []
+            for edge in edges:
+                node = edge.get("node") or {}
+                for result in node.get("collated_results") or []:
+                    snapshot = result.get("snapshot") or {}
+                    archive_id = result.get("ad_archive_id") or snapshot.get("link_url") or snapshot.get("page_name")
+                    if archive_id in seen:
+                        continue
+                    seen.add(archive_id)
+
+                    page_name = snapshot.get("page_name") or result.get("page_name") or "未知店铺"
+                    store_avatar = snapshot.get("page_profile_picture_url", "")
+                    body = snapshot.get("body") or {}
+                    ad_text = body.get("text") or snapshot.get("title") or "无文案"
+
+                    image_urls = _extract_media_urls(snapshot, "images")
+                    if not image_urls:
+                        image_urls = _extract_media_urls(snapshot, "cards")
+                    if not image_urls:
+                        image_urls = _extract_media_urls(snapshot, "extra_images")
+
+                    video_urls = []
+                    video_preview_urls = []
+                    for item in snapshot.get("videos") or []:
+                        if not isinstance(item, dict):
+                            continue
+                        if item.get("video_hd_url"):
+                            video_urls.append(item["video_hd_url"])
+                        elif item.get("video_sd_url"):
+                            video_urls.append(item["video_sd_url"])
+                        if item.get("video_preview_image_url"):
+                            video_preview_urls.append(item["video_preview_image_url"])
+
+                    if not image_urls and video_preview_urls:
+                        image_urls = video_preview_urls
+
+                    display_format = (snapshot.get("display_format") or "").upper()
+                    if display_format == "VIDEO" or video_urls:
+                        ad_type = "视频"
+                    elif len(image_urls) > 1 or display_format in {"CAROUSEL", "DCO"}:
+                        ad_type = "轮播图"
+                    else:
+                        ad_type = "图片"
+
+                    link_url = pick_best_ad_link(
+                        snapshot.get("link_url") or snapshot.get("page_profile_uri") or "",
+                        ad_text,
+                    )
+                    platforms = result.get("publisher_platform") or []
+                    platform_text = ",".join(platforms) if platforms else "Facebook"
+                    delivery_date = _format_cn_date_from_unix(result.get("start_date"))
+
+                    ads.append({
+                        "投放店铺": page_name,
+                        "店铺头像": store_avatar,
+                        "广告文案": ad_text,
+                        "广告图片": ",".join(image_urls),
+                        "广告视频": ",".join(video_urls),
+                        "广告类型": ad_type,
+                        "广告链接": link_url,
+                        "投放日期": delivery_date,
+                        "投放平台": platform_text,
+                    })
+    return ads
+
+
 def save_to_db(ads: list) -> int:
     conn = pymysql.connect(**DB_CONFIG)
     inserted = 0
@@ -159,6 +308,8 @@ def save_to_db(ads: list) -> int:
                     img_local = download_url_list(ad.get("广告图片", ""))
                     video_local = download_url_list(ad.get("广告视频", ""))
 
+                    best_link = pick_best_ad_link(ad.get("广告链接", ""), ad.get("广告文案", ""))
+
                     cur.execute(
                         """INSERT INTO fb_advertising_table
                            (store_name, store_icon, advertising_text, advertising_img,
@@ -172,7 +323,7 @@ def save_to_db(ads: list) -> int:
                             img_local,
                             video_local,
                             ad_type,
-                            json.dumps([ad.get("广告链接", "")], ensure_ascii=False) if ad.get("广告链接") else "[]",
+                            json.dumps([best_link], ensure_ascii=False) if best_link else "[]",
                             ad_date,
                             ad.get("投放平台", "Facebook"),
                             0,
@@ -188,6 +339,11 @@ def save_to_db(ads: list) -> int:
 
 
 def parse_html(html_content: str) -> list:
+    json_ads = _parse_from_embedded_json(html_content)
+    if json_ads:
+        logger.info(f"从内嵌 JSON 解析到 {len(json_ads)} 条广告")
+        return json_ads
+
     soup = BeautifulSoup(html_content, "html.parser")
     ads = []
 
@@ -276,6 +432,7 @@ def parse_html(html_content: str) -> list:
             le = container.select_one("a[target='_blank'][href]")
             if le:
                 ad_link = le.get("href", "")
+            ad_link = pick_best_ad_link(ad_link, ad_text)
 
             delivery_date = "未知"
             if delivery_time != "未知":
@@ -396,17 +553,13 @@ def run_spider(target_url: str, max_scrolls: int = 20, cookies_path: str = None,
 
             # 滚动加载
             last_height = page.evaluate("document.body.scrollHeight")
-            last_ad_count = len(page.query_selector_all('div._7jyh'))
             no_change = 0
             for i in range(max_scrolls):
                 page.evaluate(f"window.scrollTo(0, document.body.scrollHeight + {random.randint(-100, 50)})")
-                # 等待新广告加载（比之前更长）
                 time.sleep(random.uniform(3.5, 5.5))
 
                 new_height = page.evaluate("document.body.scrollHeight")
-                new_ad_count = len(page.query_selector_all('div._7jyh'))
-
-                if abs(new_height - last_height) < 50 and new_ad_count == last_ad_count:
+                if abs(new_height - last_height) < 50:
                     no_change += 1
                     if no_change >= 3:
                         logger.info("页面不再增长，停止滚动")
@@ -414,8 +567,7 @@ def run_spider(target_url: str, max_scrolls: int = 20, cookies_path: str = None,
                 else:
                     no_change = 0
                 last_height = new_height
-                last_ad_count = new_ad_count
-                logger.info(f"第 {i+1} 次滚动，页面高度 {new_height}，广告数 {new_ad_count}")
+                logger.info(f"第 {i+1} 次滚动，页面高度 {new_height}")
 
             html = page.content()
             ads = parse_html(html)

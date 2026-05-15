@@ -2,6 +2,7 @@ import threading
 import json
 import os
 import logging
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -125,6 +126,27 @@ def _parse_json_field(val):
         return json.loads(val)
     except Exception:
         return [val] if val else []
+
+
+def _resolve_ad_links(raw_links, advertising_text: str | None) -> list[str]:
+    links = [u for u in _parse_json_field(raw_links) if isinstance(u, str) and u.strip()]
+    text = advertising_text or ""
+    text_links = re.findall(r'https?://[^\s<>"\]]+', text)
+
+    preferred: list[str] = []
+    for url in text_links:
+        clean = url.rstrip(".,)")
+        if clean not in preferred:
+            preferred.append(clean)
+
+    for url in links:
+        clean = url.strip()
+        # 历史数据里很多 fb_url 只是 Facebook 主页链接，优先让前端打开文案里的真实落地页
+        if ("facebook.com" in clean or "fb.com" in clean) and preferred:
+            continue
+        if clean not in preferred:
+            preferred.append(clean)
+    return preferred
 
 
 # ── API ──
@@ -258,7 +280,7 @@ async def list_fb_ads(
             "advertising_img": _parse_json_field(r["advertising_img"]),
             "advertising_video": _parse_json_field(r["advertising_video"]),
             "advertising_type": r["advertising_type"],
-            "fb_url": _parse_json_field(r["fb_url"]),
+            "fb_url": _resolve_ad_links(r["fb_url"], r["advertising_text"]),
             "advertising_time": str(r["advertising_time"]) if r["advertising_time"] else None,
             "advertising_platform": r["advertising_platform"],
         }
