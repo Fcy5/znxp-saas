@@ -7,7 +7,7 @@ import re
 import sys
 import pymysql
 
-DB = dict(host='52.8.149.180', user='znxp', password='ZRiACK48n2h7WJtJ',
+DB = dict(host='192.99.45.58', user='znxp', password='ZRiACK48n2h7WJtJ',
           db='znxp', charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor)
 
 

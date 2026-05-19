@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("instagram_spider")
 
 DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "52.8.149.180"),
+    "host": os.getenv("DB_HOST", "192.99.45.58"),
     "port": int(os.getenv("DB_PORT", 3306)),
     "db": os.getenv("DB_NAME", "znxp"),
     "user": os.getenv("DB_USER", "znxp"),

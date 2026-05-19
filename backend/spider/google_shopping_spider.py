@@ -15,7 +15,7 @@ from serpapi import GoogleSearch
 SERPAPI_KEY = "bfdc4613002461e151816aade12be456d6c25e97ff621a06123894bfcf6cb60e"
 
 # ── DB ────────────────────────────────────────────────────────────────────────
-DB = dict(host="52.8.149.180", port=3306, user="znxp",
+DB = dict(host="192.99.45.58", port=3306, user="znxp",
           password="ZRiACK48n2h7WJtJ", db="znxp", charset="utf8mb4")
 
 # ── 关键词列表 ─────────────────────────────────────────────────────────────────

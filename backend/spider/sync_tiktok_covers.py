@@ -9,7 +9,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 import requests
 
-DB = dict(host="52.8.149.180", port=3306, user="znxp",
+DB = dict(host="192.99.45.58", port=3306, user="znxp",
           password="ZRiACK48n2h7WJtJ", db="znxp", charset="utf8mb4",
           cursorclass=DictCursor)
 

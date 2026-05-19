@@ -16,7 +16,7 @@ import pymysql
 import pymysql.cursors
 
 DB = dict(
-    host="52.8.149.180", port=3306,
+    host="192.99.45.58", port=3306,
     user="znxp", password="ZRiACK48n2h7WJtJ",
     db="znxp", charset="utf8mb4",
     cursorclass=pymysql.cursors.DictCursor,

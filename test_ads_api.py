@@ -2,7 +2,7 @@ import urllib.request
 import json
 import pymysql
 
-db = pymysql.connect(host="52.8.149.180", user="znxp", password="ZRiACK48n2h7WJtJ", database="znxp")
+db = pymysql.connect(host="192.99.45.58", user="znxp", password="ZRiACK48n2h7WJtJ", database="znxp")
 cur = db.cursor()
 cur.execute("SELECT access_token FROM google_oauth_tokens LIMIT 1")
 token = cur.fetchone()[0]
