@@ -290,6 +290,33 @@ def _save_image_bytes(url: str, data: bytes) -> str:
     return f"/static/uploads/xhs/{filename}"
 
 
+def _resolve_card_images(raw_image_urls: list[str], captured_images: dict[str, bytes], limit: int = 3) -> list[str]:
+    """优先使用已截获并落地的图片，匹配不到时回退到原始 CDN URL。"""
+    images: list[str] = []
+    for img_url in raw_image_urls[:limit]:
+        final_url = ""
+        if img_url in captured_images:
+            final_url = _save_image_bytes(img_url, captured_images[img_url])
+        else:
+            # URL 可能带有不同尺寸/裁剪后缀，做一次宽松匹配
+            matched = next(
+                (
+                    key for key in captured_images
+                    if key == img_url or key.startswith(img_url) or img_url.startswith(key)
+                ),
+                None,
+            )
+            if matched:
+                final_url = _save_image_bytes(img_url, captured_images[matched])
+
+        if not final_url:
+            final_url = img_url
+
+        if final_url and final_url not in images:
+            images.append(final_url)
+    return images
+
+
 def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
     """对单个关键词执行搜索+滚动+解析，返回商品列表"""
     search_url = XHS_SEARCH_URL.format(requests.utils.quote(keyword))
@@ -459,18 +486,7 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
                     if clean not in raw_image_urls:
                         raw_image_urls.append(clean)
 
-            images = []
-            for img_url in raw_image_urls[:3]:
-                if img_url in captured_images:
-                    local_path = _save_image_bytes(img_url, captured_images[img_url])
-                    images.append(local_path)
-                else:
-                    # 前缀匹配（URL 带有 !suffix 变体）
-                    matched = next((k for k in captured_images if k == img_url or
-                                    k.startswith(img_url) or img_url.startswith(k)), None)
-                    if matched:
-                        local_path = _save_image_bytes(img_url, captured_images[matched])
-                        images.append(local_path)
+            images = _resolve_card_images(raw_image_urls, captured_images)
 
             author_el = (
                 card.query_selector(".author-info .name")
