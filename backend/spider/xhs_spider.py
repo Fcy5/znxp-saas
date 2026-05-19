@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
 
 DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "52.8.149.180"),
+    "host": os.getenv("DB_HOST", "192.99.45.58"),
     "port": int(os.getenv("DB_PORT", 3306)),
     "db": os.getenv("DB_NAME", "znxp"),
     "user": os.getenv("DB_USER", "znxp"),
@@ -56,6 +56,36 @@ EMBROIDERY_KEYWORDS = [
 
 # 标题黑名单：包含这些词的笔记不是商品，跳过
 TITLE_BLACKLIST = ["教程", "教学", "DIY", "手工教", "怎么绣", "针法", "图案绣", "学刺绣", "入门", "零基础"]
+CONTENT_BLACKLIST = [
+    "二手", "中古", "闲置", "vintage", "古着", "穿搭", "ootd", "搭配", "上身",
+    "测评", "开箱", "种草", "分享", "合集", "探店", "工厂", "面料", "布料", "辅料",
+    "批发", "代发", "版型", "打版", "样衣", "供应链", "找工厂", "布样", "料子",
+    "改造", "图纸", "科普", "同款", "百元同款", "部位名称",
+]
+GENERIC_PRODUCT_TERMS = [
+    "卫衣", "帽衫", "圆领", "hoodie", "sweatshirt",
+    "t恤", "tee", "短袖", "半袖", "上衣",
+    "帽子", "棒球帽", "cap", "渔夫帽",
+    "包包", "帆布包", "托特", "tote", "背包",
+    "外套", "夹克", "衬衫", "牛仔", "胸章", "徽章", "贴布",
+]
+EMBROIDERY_SIGNALS = ["刺绣", "绣花", "定制", "定做", "绣字", "绣名字", "embroider", "embroidered", "personalized", "custom"]
+KEYWORD_PRODUCT_HINTS = {
+    "刺绣卫衣定制": ["卫衣", "帽衫", "hoodie", "sweatshirt", "圆领"],
+    "刺绣T恤定制": ["t恤", "tee", "短袖", "半袖", "上衣"],
+    "刺绣帽子定制": ["帽", "帽子", "棒球帽", "cap", "渔夫帽"],
+    "刺绣包包定制": ["包", "包包", "帆布包", "托特", "tote", "手提包"],
+    "定制绣花外套": ["外套", "夹克", "棒球服", "开衫"],
+    "刺绣衬衫定制": ["衬衫", "衬衣"],
+    "宠物刺绣定制衣服": ["卫衣", "t恤", "衣服", "上衣", "帽衫"],
+    "情侣刺绣卫衣": ["卫衣", "帽衫", "hoodie", "sweatshirt", "圆领"],
+    "刺绣牛仔定制": ["牛仔", "裤", "外套", "夹克", "裙"],
+    "刺绣胸章定制": ["胸章", "徽章", "贴布", "布贴"],
+}
+KEYWORD_EXTRA_SIGNALS = {
+    "宠物刺绣定制衣服": ["宠物", "狗", "狗狗", "猫", "猫咪", "pet"],
+    "情侣刺绣卫衣": ["情侣", "姓氏", "名字", "love", "couple", "定制", "刺绣"],
+}
 
 XHS_SEARCH_URL = "https://www.xiaohongshu.com/search_result?keyword={}&source=unknown&type=51"
 
@@ -135,10 +165,9 @@ def save_to_db(products: list, keyword: str = "") -> int:
                         logger.info(f"跳过无图商品: {p.get('title', '')[:40]}")
                         continue
 
-                    # 过滤教程类内容
                     title_check = p.get("title", "")
-                    if any(kw in title_check for kw in TITLE_BLACKLIST):
-                        logger.info(f"跳过教程内容: {title_check[:40]}")
+                    if not _is_valid_product_note(title_check, keyword, p.get("author_name", "")):
+                        logger.info(f"跳过低相关内容: {title_check[:40] or '[空标题]'}")
                         continue
 
                     # 检查重复（同 URL）
@@ -184,6 +213,72 @@ def _parse_likes(text: str) -> int:
         return int(text)
     except Exception:
         return 0
+
+
+def _normalize_text(text: str | None) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip())
+
+
+def _extract_like_count(card) -> int:
+    selectors = [
+        ".interact-info .count",
+        ".like-wrapper .count",
+        "[class*='like'] [class*='count']",
+        "[class*='interact'] [class*='count']",
+        "[class*='like'] span",
+        "[class*='engage'] span",
+    ]
+    for sel in selectors:
+        try:
+            for el in card.query_selector_all(sel):
+                text = _normalize_text(el.inner_text())
+                if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?万?", text):
+                    return _parse_likes(text)
+        except Exception:
+            continue
+
+    try:
+        card_text = _normalize_text(card.inner_text())
+        matches = re.findall(r"(?<![\w.])([0-9]+(?:\.[0-9]+)?万?)(?![\w.])", card_text)
+        candidates = [_parse_likes(item) for item in matches]
+        candidates = [item for item in candidates if item > 0]
+        if candidates:
+            return max(candidates)
+    except Exception:
+        pass
+    return 0
+
+
+def _matches_any(text: str, keywords: list[str]) -> bool:
+    lower = text.lower()
+    return any(keyword.lower() in lower for keyword in keywords)
+
+
+def _is_valid_product_note(title: str, keyword: str, author_name: str = "") -> bool:
+    text = _normalize_text(f"{title} {author_name}")
+    if not title or len(title.strip()) < 4:
+        return False
+    if any(bad.lower() in text.lower() for bad in TITLE_BLACKLIST):
+        return False
+    if any(bad.lower() in text.lower() for bad in CONTENT_BLACKLIST):
+        return False
+
+    expected_terms = KEYWORD_PRODUCT_HINTS.get(keyword, [])
+    if expected_terms and not _matches_any(title, expected_terms):
+        return False
+
+    has_product_term = _matches_any(title, expected_terms or GENERIC_PRODUCT_TERMS)
+    has_embroidery_signal = _matches_any(title, EMBROIDERY_SIGNALS)
+    if not has_embroidery_signal:
+        return False
+
+    extra_signals = KEYWORD_EXTRA_SIGNALS.get(keyword, [])
+    if extra_signals and not _matches_any(title, extra_signals):
+        return False
+
+    if not has_product_term:
+        return False
+    return True
 
 
 def _save_image_bytes(url: str, data: bytes) -> str:
@@ -347,8 +442,12 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
     products = []
     for card in page.query_selector_all(found_selector):
         try:
-            title_el = card.query_selector(".footer .title") or card.query_selector(".title")
-            title = title_el.inner_text().strip() if title_el else ""
+            title_el = (
+                card.query_selector(".footer .title")
+                or card.query_selector(".title")
+                or card.query_selector("[class*='title']")
+            )
+            title = _normalize_text(title_el.inner_text()) if title_el else ""
 
             raw_image_urls = []
             for img in card.query_selector_all("img"):
@@ -373,14 +472,17 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
                         local_path = _save_image_bytes(img_url, captured_images[matched])
                         images.append(local_path)
 
-            author_el = card.query_selector(".author-info .name") or card.query_selector(".author .name")
-            author_name = author_el.inner_text().strip() if author_el else ""
+            author_el = (
+                card.query_selector(".author-info .name")
+                or card.query_selector(".author .name")
+                or card.query_selector("[class*='author'] [class*='name']")
+            )
+            author_name = _normalize_text(author_el.inner_text()) if author_el else ""
 
             avatar_el = card.query_selector(".author-info img") or card.query_selector(".avatar img")
             author_avatar = (avatar_el.get_attribute("src") or "") if avatar_el else ""
 
-            likes_el = card.query_selector(".interact-info .count") or card.query_selector(".like-wrapper .count")
-            likes_count = _parse_likes(likes_el.inner_text() if likes_el else "0")
+            likes_count = _extract_like_count(card)
 
             link_el = card.query_selector("a[href]")
             xhs_url = ""
@@ -388,7 +490,7 @@ def _crawl_one_keyword(page, context, keyword: str, max_scrolls: int) -> list:
                 href = link_el.get_attribute("href") or ""
                 xhs_url = ("https://www.xiaohongshu.com" + href) if href.startswith("/") else href
 
-            if title or images:
+            if images and _is_valid_product_note(title, keyword, author_name):
                 products.append({
                     "title": title,
                     "description": title,

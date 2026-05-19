@@ -22,9 +22,9 @@ type ThemeConfig = {
 }
 
 const features = [
-  { href: "/selection/products", icon: ShoppingBag, name: "选品大厅", desc: "全平台商品池、筛选、AI 推荐", badge: "HOT" },
-  { href: "/selection/library", icon: Bookmark, name: "我的选品库", desc: "候选、重点、主推商品", badge: "WORKBENCH" },
-  { href: "/selection/xiaohongshu", icon: Flower2, name: "小红书 / Instagram", desc: "社媒素材库、热帖、跨境内容参考", badge: "NEW" },
+  { href: "/selection/products", icon: ShoppingBag, name: "选品大厅", desc: "全平台商品池、筛选、AI 推荐" },
+  { href: "/selection/library", icon: Bookmark, name: "我的选品库", desc: "候选、重点、主推商品" },
+  { href: "/selection/xiaohongshu", icon: Flower2, name: "小红书 / Instagram", desc: "社媒素材库、热帖、跨境内容参考" },
   { href: "/selection/facebook", icon: MonitorPlay, name: "FB 广告库", desc: "广告素材、投放参考、媒体同步" },
   { href: "/selection/suppliers", icon: Truck, name: "供应商", desc: "供应商管理、供应商商品库" },
 ]

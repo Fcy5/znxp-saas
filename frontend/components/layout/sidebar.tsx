@@ -8,43 +8,37 @@ import {
   Zap, ChevronRight, LogOut, Truck, MonitorPlay, Bookmark, Rocket, Flower2, Wand2, ShoppingCart,
   Layers,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 
 const systemNavItems = [
   {
-    label: "中控台",
+    label: "总览",
     items: [
       { href: "/control-center", icon: LayoutDashboard, label: "系统总览" },
-      { href: "/operations/agent", icon: Bot, label: "AI 运营工作台", badge: "2" },
+      { href: "/operations/agent", icon: Bot, label: "任务中心" },
     ],
   },
   {
-    label: "选品系统",
+    label: "选品",
     items: [
-      { href: "/products", icon: ShoppingBag, label: "选品大厅", badge: "HOT" },
+      { href: "/products", icon: ShoppingBag, label: "选品大厅" },
       { href: "/library", icon: Bookmark, label: "我的选品库" },
-      { href: "/xiaohongshu", icon: Flower2, label: "小红书 / Instagram", badge: "NEW" },
+      { href: "/xiaohongshu", icon: Flower2, label: "小红书 / Instagram" },
       { href: "/facebook", icon: MonitorPlay, label: "FB 广告库" },
       { href: "/suppliers", icon: Truck, label: "供应商" },
     ],
   },
   {
-    label: "商品标题及详情优化",
+    label: "内容与上架",
     items: [
-      { href: "/seo/shopify-ai", icon: Wand2, label: "商品标题及详情优化", badge: "NEW" },
+      { href: "/seo/shopify-ai", icon: Wand2, label: "商品标题及详情优化" },
+      { href: "/shops", icon: Store, label: "我的店铺" },
+      { href: "/published", icon: Rocket, label: "上架记录" },
     ],
   },
   {
-    label: "广告系统",
+    label: "投放",
     items: [
       { href: "/gmc", icon: ShoppingCart, label: "Google 购物广告" },
-    ],
-  },
-  {
-    label: "运营系统",
-    items: [
-      { href: "/shops", icon: Store, label: "我的店铺" },
-      { href: "/published", icon: Rocket, label: "上架历史" },
     ],
   },
   {
@@ -53,15 +47,6 @@ const systemNavItems = [
       { href: "/settings", icon: Settings, label: "设置" },
     ],
   },
-]
-
-const dataSources = [
-  { label: "Amazon BSR", color: "bg-amber-400", live: true },
-  { label: "Etsy Trends", color: "bg-pink-400", live: true },
-  { label: "TikTok 热榜", color: "bg-red-400", live: false },
-  { label: "Facebook Ads", color: "bg-blue-400", live: false },
-  { label: "Google Merchant", color: "bg-emerald-400", live: true },
-  { label: "小红书", color: "bg-rose-400", live: false },
 ]
 
 export function Sidebar() {
@@ -95,9 +80,8 @@ export function Sidebar() {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-white">ZNXP</span>
-            <span className="rounded-full border border-white/8 bg-white/5 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.18em] text-slate-400">OS</span>
           </div>
-          <p className="mt-1 text-[11px] text-slate-500">Cross-border operations cockpit</p>
+          <p className="mt-1 text-[11px] text-slate-500">Cross-border product operations</p>
         </div>
       </div>
 
@@ -130,11 +114,6 @@ export function Sidebar() {
                       <item.icon className={cn("w-4 h-4", active ? "text-cyan-200" : "text-slate-500")} />
                     </span>
                     <span className="flex-1 truncate">{item.label}</span>
-                    {item.badge && (
-                      <Badge variant={item.badge === "HOT" ? "warning" : "default"} className="text-[10px] px-1.5 py-0">
-                        {item.badge}
-                      </Badge>
-                    )}
                     {active && <ChevronRight className="w-3 h-3 text-blue-400 opacity-60" />}
                   </Link>
                 )
@@ -142,18 +121,6 @@ export function Sidebar() {
             </div>
           </div>
         ))}
-
-        <div className="border-t my-3" style={{ borderColor: "var(--color-sidebar-border)" }} />
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">数据源</p>
-        <div className="rounded-2xl border border-white/6 bg-white/[0.02] p-2">
-          {dataSources.map((src) => (
-            <div key={src.label} className="flex items-center gap-3 px-3 py-2 text-xs text-slate-500">
-              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", src.color, src.live && "animate-pulse")} />
-              <span>{src.label}</span>
-              {src.live && <span className="ml-auto rounded-full border border-emerald-400/20 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] text-emerald-300">LIVE</span>}
-            </div>
-          ))}
-        </div>
       </nav>
 
       {/* User */}
@@ -164,7 +131,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{username}</p>
-            <p className="text-xs text-slate-400">Pro workspace</p>
+            <p className="text-xs text-slate-400">账号中心</p>
           </div>
           <button onClick={handleLogout} title="退出登录" className="rounded-xl border border-white/8 bg-white/[0.03] p-2">
             <LogOut className="w-4 h-4 text-slate-500 hover:text-white transition-colors" />

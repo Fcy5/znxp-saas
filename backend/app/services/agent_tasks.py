@@ -35,6 +35,14 @@ def _update_task(task_id: int, **kwargs):
         return
     conn = _db()
     try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM agent_tasks WHERE id=%s", (task_id,))
+            row = cur.fetchone()
+        current_status = row["status"] if row else None
+        next_status = kwargs.get("status")
+        if current_status == "cancelled" and next_status != "cancelled":
+            return
+
         parts = []
         vals = []
         for k, v in kwargs.items():
@@ -47,6 +55,17 @@ def _update_task(task_id: int, **kwargs):
         with conn.cursor() as cur:
             cur.execute(sql, vals)
         conn.commit()
+    finally:
+        conn.close()
+
+
+def _task_cancelled(task_id: int) -> bool:
+    conn = _db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM agent_tasks WHERE id=%s", (task_id,))
+            row = cur.fetchone()
+        return bool(row and row["status"] == "cancelled")
     finally:
         conn.close()
 

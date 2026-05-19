@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { AgentTaskCard } from "@/components/agent/agent-task-card"
-import { SocialCreativeDialog } from "@/components/agent/social-creative-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -566,7 +565,6 @@ export default function AgentPage() {
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [modalType, setModalType] = useState<string | null>(null)
   const [showWizard, setShowWizard] = useState(false)
-  const [showSocialDialog, setShowSocialDialog] = useState(false)
   const [launching, setLaunching] = useState<string | null>(null)
   const [videoModel, setVideoModel] = useState(VIDEO_MODELS[0].value)
   const [shops, setShops] = useState<Shop[]>([])
@@ -648,6 +646,11 @@ export default function AgentPage() {
     setModalType(type)
   }
 
+  const handleCancelTask = async (taskId: number) => {
+    const res = await agentApi.cancelTask(taskId)
+    setTasks(prev => prev.map(task => task.id === taskId ? res.data : task))
+  }
+
   return (
     <div className="flex flex-col min-h-full">
       <Header title="AI 运营工作台" />
@@ -661,10 +664,6 @@ export default function AgentPage() {
           </div>
           <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Badge className="border border-cyan-400/20 bg-cyan-500/10 text-[10px] text-cyan-200">AUTOMATION HUB</Badge>
-                <Badge variant="default" className="text-[10px]">BETA</Badge>
-              </div>
               <div className="flex items-center gap-3 mb-3">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
                   <Zap className="w-5 h-5" />
@@ -679,7 +678,7 @@ export default function AgentPage() {
               <div className="grid grid-cols-3 gap-2 self-stretch xl:w-[360px]">
                 {[
                   { label: "运行能力", value: "6" },
-                  { label: "独立入口", value: "2" },
+                  { label: "任务记录", value: `${tasks.length}` },
                   { label: "任务模式", value: "Agent" },
                 ].map((item) => (
                   <div key={item.label} className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
@@ -689,10 +688,6 @@ export default function AgentPage() {
                 ))}
               </div>
               <div className="flex gap-2 shrink-0">
-                <Button variant="outline" className="gap-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200" onClick={() => setShowSocialDialog(true)}>
-                  <Sparkles className="w-4 h-4" />
-                  打开社媒对话框
-                </Button>
                 <Button className="gap-2" onClick={() => setShowWizard(true)}>
                   <Sparkles className="w-4 h-4" />
                   一键启动工作流
@@ -720,28 +715,6 @@ export default function AgentPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Capabilities */}
           <div className="lg:col-span-2">
-            <Card className="mb-4 border-cyan-500/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_35%),rgba(255,255,255,0.02)]">
-              <CardContent className="p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200 text-xl">💬</span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">独立社媒创意对话框</p>
-                      <p className="text-[11px] text-slate-500 mt-1">运营人员直接上传本地素材的快捷工作区</p>
-                    </div>
-                    <Badge variant="default" className="text-[9px]">NEW</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground max-w-xl">
-                    不需要先选商品，直接在运营模块上传你本地图片，做图生图、图生视频、保存素材和删除素材。
-                  </p>
-                </div>
-                <Button className="gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950" onClick={() => setShowSocialDialog(true)}>
-                  <Sparkles className="w-4 h-4" />
-                  立即打开
-                </Button>
-              </CardContent>
-            </Card>
-
             <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
               运营能力矩阵
@@ -762,7 +735,6 @@ export default function AgentPage() {
                           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.04] text-2xl">{cap.icon}</span>
                           <div>
                             <p className="text-sm font-semibold text-foreground">{cap.title}</p>
-                            <Badge variant={cap.badgeVariant} className="text-[9px] mt-0.5">{cap.badge}</Badge>
                           </div>
                         </div>
                       </div>
@@ -819,6 +791,7 @@ export default function AgentPage() {
                   <AgentTaskCard
                     key={task.id}
                     task={task}
+                    onCancel={handleCancelTask}
                     onConfirmDiscovery={async (productIds, shopId) => {
                       await agentApi.confirmDiscovery(productIds, shopId)
                       router.push(`/library${shopId ? `?shop_id=${shopId}` : ""}`)
@@ -915,10 +888,6 @@ export default function AgentPage() {
           onClose={() => setShowWizard(false)}
           onTaskCreated={handleTaskCreated}
         />
-      )}
-
-      {showSocialDialog && (
-        <SocialCreativeDialog onClose={() => setShowSocialDialog(false)} />
       )}
     </div>
   )

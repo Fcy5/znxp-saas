@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { CheckCircle2, XCircle, Clock, Loader2, ChevronDown, ChevronUp, ExternalLink, Check } from "lucide-react"
+import { CheckCircle2, XCircle, Clock, Loader2, ChevronDown, ChevronUp, ExternalLink, Check, PauseCircle } from "lucide-react"
 import Link from "next/link"
 import type { AgentTask } from "@/lib/api"
 
@@ -37,9 +37,11 @@ interface DiscoveredProduct {
 export function AgentTaskCard({
   task,
   onConfirmDiscovery,
+  onCancel,
 }: {
   task: AgentTask
   onConfirmDiscovery?: (productIds: number[], shopId?: number) => Promise<void>
+  onCancel?: (taskId: number) => Promise<void>
 }) {
   const meta = taskMeta[task.task_type] ?? { label: task.task_type, icon: "⚙️" }
   const status = statusConfig[task.status as keyof typeof statusConfig] ?? statusConfig.pending
@@ -48,6 +50,7 @@ export function AgentTaskCard({
   const [selected, setSelected] = useState<Set<number> | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   const output = task.output_data as Record<string, unknown> | null
   const hasOutput = task.status === "success" && output
@@ -85,6 +88,16 @@ export function AgentTaskCard({
     }
   }
 
+  const handleCancel = async () => {
+    if (!onCancel || cancelling) return
+    setCancelling(true)
+    try {
+      await onCancel(task.id)
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card">
       <div className="flex items-center gap-4 px-4 py-3.5">
@@ -111,6 +124,17 @@ export function AgentTaskCard({
           <button onClick={() => setExpanded(v => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
+        ) : task.status === "pending" || task.status === "running" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 gap-1.5"
+            disabled={cancelling}
+            onClick={handleCancel}
+          >
+            {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PauseCircle className="w-3.5 h-3.5" />}
+            取消
+          </Button>
         ) : (
           <StatusIcon className={cn("w-5 h-5 shrink-0", status.color, task.status === "running" && "animate-spin")} />
         )}

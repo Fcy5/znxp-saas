@@ -656,7 +656,7 @@ export interface SocialCopyResult {
 export interface AgentTask {
   id: number
   task_type: string
-  status: string   // pending | running | success | failed
+  status: string   // pending | running | success | failed | cancelled
   progress: number
   output_data: Record<string, unknown> | null
   error_message: string | null
@@ -799,4 +799,9 @@ export const agentApi = {
 
   pollTask: (task_id: number) =>
     request<ApiResponse<AgentTask>>(`/agent/tasks/${task_id}`),
+
+  cancelTask: (task_id: number) =>
+    request<ApiResponse<AgentTask>>(`/agent/tasks/${task_id}/cancel`, {
+      method: "POST",
+    }),
 }

@@ -2,11 +2,10 @@
 import Link from "next/link"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ArrowRight, SearchCheck, Wand2 } from "lucide-react"
 
 const features = [
-  { href: "/seo/shopify-ai", icon: Wand2, name: "商品标题及详情优化", desc: "商品缓存、标题优化、详情描述、图片标签、视频素材", badge: "NEW" },
+  { href: "/seo/shopify-ai", icon: Wand2, name: "商品标题及详情优化", desc: "商品缓存、标题优化、详情描述、图片标签、视频素材" },
   { href: "/seo/shopify-ai", icon: SearchCheck, name: "标题与详情健康度", desc: "先进入商品标题及详情优化，后续再独立成关键词库和健康度看板" },
 ]
 
@@ -33,10 +32,7 @@ export default function SeoSystemPage() {
                       <feature.icon className="w-5 h-5 text-blue-400" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground">{feature.name}</p>
-                        {feature.badge && <Badge className="text-[10px] px-1.5 py-0">{feature.badge}</Badge>}
-                      </div>
+                      <p className="font-semibold text-foreground">{feature.name}</p>
                       <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{feature.desc}</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />

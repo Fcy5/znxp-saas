@@ -962,7 +962,6 @@ export function AgentWorkflow({
             <CardTitle className="text-base flex items-center gap-2 text-white">
               <Bot className="w-4 h-4 text-cyan-300" />
               AI 创意与商品详情工作台
-              <Badge className="border border-cyan-400/20 bg-cyan-500/10 text-[9px] text-cyan-200">BETA</Badge>
             </CardTitle>
             <p className="text-xs text-slate-400">保留原上架优化流程，同时新增对话式社媒创意区、素材保存区和上架额外图片联动。</p>
           </div>

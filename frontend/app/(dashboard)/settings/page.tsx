@@ -4,31 +4,11 @@ import { useRouter } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { Check, Crown, Building2, Key, Bell, Shield, LogOut, Palette, Loader2, Bot, CheckCircle2 } from "lucide-react"
+import { Check, Building2, Key, Bell, Shield, LogOut, Palette, Loader2, Bot, CheckCircle2 } from "lucide-react"
 import { useTheme, THEMES } from "@/components/theme-provider"
 import { request, AVAILABLE_MODELS, dashboardApi } from "@/lib/api"
-
-const plans = [
-  {
-    name: "Free", price: "$0", current: false,
-    features: ["5 次/月 AI 推品", "基础筛选", "1 个店铺"],
-  },
-  {
-    name: "Starter", price: "$29", current: true,
-    features: ["50 次/月 AI 推品", "全维度筛选", "3 个店铺", "商品标题及详情生成", "图片基础处理"],
-  },
-  {
-    name: "Pro", price: "$79", current: false,
-    features: ["无限 AI 推品", "5 个店铺", "视频二创", "Agent 自动模式", "优先队列"],
-  },
-  {
-    name: "Enterprise", price: "联系我们", current: false,
-    features: ["无限一切", "专属 Agent", "API 访问", "SLA 保障"],
-  },
-]
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -166,16 +146,11 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Subscription */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-400" />
-              订阅计划
-            </CardTitle>
+            <CardTitle>使用情况</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Usage */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: "今日 Agent 任务", used: stats?.agent_tasks_completed_today ?? 0, total: 50, color: "bg-primary" },
@@ -191,35 +166,6 @@ export default function SettingsPage() {
                     </span>
                   </div>
                   {u.total && <Progress value={(u.used / u.total) * 100} color={u.color} />}
-                </div>
-              ))}
-            </div>
-
-            {/* Plans */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {plans.map(plan => (
-                <div
-                  key={plan.name}
-                  className={`rounded-xl border p-4 ${plan.current ? "border-primary/50 bg-primary/5 glow" : "border-border bg-secondary"}`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-bold text-foreground">{plan.name}</span>
-                    {plan.current && <Badge variant="default" className="text-[9px]">当前</Badge>}
-                  </div>
-                  <p className="text-lg font-black text-foreground mb-3">{plan.price}<span className="text-xs text-muted-foreground font-normal">{plan.price !== "联系我们" ? "/月" : ""}</span></p>
-                  <ul className="space-y-1.5 mb-4">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                        <Check className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  {!plan.current && (
-                    <Button size="sm" variant={plan.name === "Pro" ? "default" : "outline"} className="w-full text-xs">
-                      升级
-                    </Button>
-                  )}
                 </div>
               ))}
             </div>

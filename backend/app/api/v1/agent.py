@@ -871,3 +871,19 @@ async def get_task(task_id: int, current_user_id: CurrentUser, db: DBSession):
     if not task or task.user_id != current_user_id:
         raise HTTPException(status_code=404, detail="任务不存在")
     return Response(data=_task_resp(task))
+
+
+@router.post("/tasks/{task_id}/cancel", response_model=Response[AgentTaskResponse])
+async def cancel_task(task_id: int, current_user_id: CurrentUser, db: DBSession):
+    """取消当前用户自己的待执行/执行中任务"""
+    task = await db.get(AgentTask, task_id)
+    if not task or task.user_id != current_user_id or task.is_deleted:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status not in {"pending", "running"}:
+        raise HTTPException(status_code=400, detail="当前任务状态不支持取消")
+
+    task.status = "cancelled"
+    task.error_message = "用户已手动取消任务"
+    await db.commit()
+    await db.refresh(task)
+    return Response(data=_task_resp(task), message="任务已取消")
